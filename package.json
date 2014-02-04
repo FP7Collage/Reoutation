@@ -1,0 +1,10 @@
+{
+  "name": "gaminomics-reputation",
+  "version": "0.0.0alpha",
+  "private": true,
+  "dependencies": {
+    "mysql": "~2.0.1",
+    "restify": "~2.6.1",
+    "q": "~1.0.0"
+  }
+}
