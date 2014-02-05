@@ -24,7 +24,7 @@ getCacheItem = ( key, name ) ->
     if cacheItem != undefined
         return Q( cacheItem )
     query( 'SELECT `ID` FROM ?? WHERE `Name` = ?', [ key, name ] ).then (results) ->
-        cache[ key ][ name ] = results[0].ID
+        cache[ key ][ name ] = results[0]?.ID || false
 
 # /api/activities/perform
 # json payload
