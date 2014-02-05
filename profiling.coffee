@@ -47,4 +47,4 @@ exports.performActivity = ( req, res ) ->
     , (whoops) ->
         console.error "arse", whoops
         res.send 500, "Shit broke: " + whoops
-    )
+    ).done()
