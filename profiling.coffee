@@ -35,9 +35,16 @@ getCacheItem = ( key, name ) ->
 # {  }
 exports.performActivity = ( req, res ) ->
     console.log( "got call!" );
-    getCacheItem( 'actions', 'Rate' ).then( (ID) ->
-        res.send 200, ID
-    ).fail( (whoops) ->
+    Q.all([
+        getCacheItem( 'actions', req.params.action )
+        getCacheItem( 'tags', req.params.tag )
+    ]).spread( ( actionID, tagID ) ->
+        console.log "Got IDs", arguments
+        res.send 200, {
+            actionID
+            tagID
+        }
+    , (whoops) ->
         console.error "arse", whoops
         res.send 500, "Shit broke: " + whoops
     )
