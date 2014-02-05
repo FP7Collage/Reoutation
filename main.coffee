@@ -3,6 +3,8 @@ profiling = require './profiling'
 
 
 server = restify.createServer()
+server.use restify.queryParser()
+server.use restify.bodyParser()
 server.get '/', (req, res, next) ->
     res.send 'Hello World'
     next()
