@@ -1,6 +1,6 @@
 'use strict';
-mysql = require 'mysql'
-Q     = require 'q'
+mysql   = require 'mysql'
+Q       = require 'q'
 restify = require 'restify'
 
 connection = null
@@ -40,13 +40,13 @@ reqParam = ( req, next, p ) ->
 # json payload
 # {  }
 exports.performActivity = ( req, res, next ) ->
-    console.log( "got call!" );
+    console.log "got call!"
 
     return unless reqParam( req, next, 'action' ) and reqParam( req, next, 'tag' )
         
     Q.all([
-        getCacheItem( 'actions', req.params.action )
-        getCacheItem( 'tags', req.params.tag )
+        getCacheItem 'actions', req.params.action
+        getCacheItem 'tags', req.params.tag
     ]).spread( ( actionID, tagID ) ->
         console.log "Got IDs", arguments
         return next new restify.InvalidArgumentError "Unknown action '#{req.params.action}'" unless actionID
