@@ -43,6 +43,8 @@ exports.performActivity = ( req, res, next ) ->
     console.log "got call!"
 
     return unless reqParam( req, next, 'action' ) and reqParam( req, next, 'tag' )
+
+    userID = 1 #magical lookup on UID '4FA06769-C5C7-432B-9E37-4A3E7B4D294D'
         
     Q.all([
         getCacheItem 'actions', req.params.action
@@ -51,11 +53,16 @@ exports.performActivity = ( req, res, next ) ->
         console.log "Got IDs", arguments
         return next new restify.InvalidArgumentError "Unknown action '#{req.params.action}'" unless actionID
         return next new restify.InvalidArgumentError "Unknown tag '#{req.params.tag}'" unless tagID
-        res.send 200, {
-            actionID
-            tagID
-        }
-    , (whoops) ->
+        query "INSERT INTO `activities` SET ?",
+            User: userID
+            Action: actionID
+            Tag: tagID
+    )
+    .then( (wat) ->
+        console.log "woop", wat
+        res.send 200
+    )
+    .fail( (whoops) ->
         console.error "arse", whoops
         res.send 500, "Shit broke: " + whoops
     )
