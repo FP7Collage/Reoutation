@@ -58,4 +58,6 @@ exports.performActivity = ( req, res, next ) ->
     , (whoops) ->
         console.error "arse", whoops
         res.send 500, "Shit broke: " + whoops
-    ).done()
+    )
+    .finally(next)
+    .done()
