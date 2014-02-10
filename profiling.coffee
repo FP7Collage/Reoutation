@@ -61,7 +61,7 @@ exports.performActivity = ( req, res, next ) ->
     )
     .then( (wat) ->
         console.log "woop", wat
-        res.send 200
+        res.send 204
     )
     .fail( (whoops) ->
         console.error "arse", whoops
