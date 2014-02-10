@@ -59,7 +59,6 @@ CREATE TABLE IF NOT EXISTS `activities` (
   KEY `Actions` (`Action`),
   KEY `User` (`User`),
   KEY `Tags` (`Tag`),
-  KEY `Circular References are Aweseome!` (`Reference`),
   CONSTRAINT `Actions` FOREIGN KEY (`Action`) REFERENCES `actions` (`ID`),
   CONSTRAINT `Tags` FOREIGN KEY (`Tag`) REFERENCES `tags` (`ID`),
   CONSTRAINT `Users` FOREIGN KEY (`User`) REFERENCES `users` (`ID`)
