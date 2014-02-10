@@ -61,7 +61,6 @@ CREATE TABLE IF NOT EXISTS `activities` (
   KEY `Tags` (`Tag`),
   KEY `Circular References are Aweseome!` (`Reference`),
   CONSTRAINT `Actions` FOREIGN KEY (`Action`) REFERENCES `actions` (`ID`),
-  CONSTRAINT `Circular References are Aweseome!` FOREIGN KEY (`Reference`) REFERENCES `activities` (`Key`) ON DELETE SET NULL ON UPDATE SET NULL,
   CONSTRAINT `Tags` FOREIGN KEY (`Tag`) REFERENCES `tags` (`ID`),
   CONSTRAINT `Users` FOREIGN KEY (`User`) REFERENCES `users` (`ID`)
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
