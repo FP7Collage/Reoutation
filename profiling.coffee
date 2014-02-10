@@ -7,7 +7,7 @@ connection = null
 
 connect = () ->
     connection = mysql.createConnection
-        host: 'localhost'
+        host: '10.0.0.2'
         user: 'root'
         password: ''
         database: 'reputation'
