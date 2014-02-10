@@ -53,10 +53,11 @@ exports.performActivity = ( req, res, next ) ->
         console.log "Got IDs", arguments
         return next new restify.InvalidArgumentError "Unknown action '#{req.params.action}'" unless actionID
         return next new restify.InvalidArgumentError "Unknown tag '#{req.params.tag}'" unless tagID
-        query "INSERT INTO `activities` SET ?",
+        query "INSERT INTO `activities` SET ?", [{
             User: userID
             Action: actionID
             Tag: tagID
+        }]
     )
     .then( (wat) ->
         console.log "woop", wat
