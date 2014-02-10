@@ -1,7 +1,7 @@
 -- --------------------------------------------------------
--- Host:                         127.0.0.1
--- Server version:               5.6.11 - MySQL Community Server (GPL)
--- Server OS:                    Win32
+-- Host:                         10.0.0.2
+-- Server version:               5.5.30-1.1 - (Debian)
+-- Server OS:                    debian-linux-gnu
 -- HeidiSQL Version:             8.3.0.4694
 -- --------------------------------------------------------
 
@@ -53,13 +53,15 @@ CREATE TABLE IF NOT EXISTS `activities` (
   `User` int(11) unsigned NOT NULL,
   `Action` int(11) unsigned NOT NULL,
   `Tag` int(11) unsigned NOT NULL,
-  `Reference` varchar(50) COLLATE utf8_unicode_ci NOT NULL,
+  `Reference` int(11) unsigned DEFAULT NULL,
   `Date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`Key`),
   KEY `Actions` (`Action`),
   KEY `User` (`User`),
   KEY `Tags` (`Tag`),
+  KEY `Circular References are Aweseome!` (`Reference`),
   CONSTRAINT `Actions` FOREIGN KEY (`Action`) REFERENCES `actions` (`ID`),
+  CONSTRAINT `Circular References are Aweseome!` FOREIGN KEY (`Reference`) REFERENCES `activities` (`Key`) ON DELETE SET NULL ON UPDATE SET NULL,
   CONSTRAINT `Tags` FOREIGN KEY (`Tag`) REFERENCES `tags` (`ID`),
   CONSTRAINT `Users` FOREIGN KEY (`User`) REFERENCES `users` (`ID`)
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
@@ -67,10 +69,10 @@ CREATE TABLE IF NOT EXISTS `activities` (
 -- Dumping data for table reputation.activities: ~4 rows (approximately)
 /*!40000 ALTER TABLE `activities` DISABLE KEYS */;
 INSERT INTO `activities` (`Key`, `User`, `Action`, `Tag`, `Reference`, `Date`) VALUES
-	(1, 1, 2, 1, '', '2014-02-04 11:16:52'),
-	(2, 1, 5, 1, '', '2014-02-04 11:17:35'),
-	(3, 1, 9, 3, '', '2014-02-07 14:56:04'),
-	(4, 1, 4, 5, '', '2014-02-07 15:35:23');
+	(1, 1, 2, 1, NULL, '2014-02-04 11:16:52'),
+	(2, 1, 5, 1, NULL, '2014-02-04 11:17:35'),
+	(3, 1, 9, 3, NULL, '2012-02-07 14:56:04'),
+	(4, 1, 4, 5, NULL, '2014-02-07 15:35:23');
 /*!40000 ALTER TABLE `activities` ENABLE KEYS */;
 
 
