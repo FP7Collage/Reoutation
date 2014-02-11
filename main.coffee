@@ -9,6 +9,9 @@ server.get '/', (req, res, next) ->
     res.send 'Hello World'
     next()
 server.post '/activities/perform', profiling.performActivity
+server.get '/tags/recommend', profiling.recommendTags
+server.get '/actions/recommend', profiling.recommendActivities
+server.get '/categories/recommend', profiling.recommendCategories
 
 server.listen 80, () ->
     console.log '%s listening at %s', server.name, server.url
