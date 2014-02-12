@@ -18,7 +18,7 @@ query = ( txt, args = [] ) ->
     Q.ninvoke( connection, 'query', txt, args ).then (res) -> res[0]
 
 cache =
-    categories: {}
+    actionTypes: {}
     actions: {}
     skills: {}
     users: {}
@@ -138,7 +138,7 @@ exports.recommendSkills = ( req, res, next ) ->
 
     getStatistics req, res, next, statisticsQuery
 
-exports.recommendActivities = ( req, res, next ) ->
+exports.recommendActions = ( req, res, next ) ->
     statisticsQuery = "
         SELECT actions.Name, b1.Done, b2.Referenced FROM 
             (
@@ -168,9 +168,9 @@ exports.recommendActivities = ( req, res, next ) ->
 
     getStatistics req, res, next, statisticsQuery
     
-exports.recommendCategories = ( req, res, next ) ->
+exports.recommendActionTypes = ( req, res, next ) ->
     statisticsQuery = "
-        SELECT categories.Name, SUM(b1.Done) as Done, SUM(b2.Referenced) as Referenced FROM 
+        SELECT actionTypes.Name, SUM(b1.Done) as Done, SUM(b2.Referenced) as Referenced FROM 
             (
             SELECT 
                 Action, COUNT(*) as Done 
@@ -193,8 +193,8 @@ exports.recommendCategories = ( req, res, next ) ->
                 a2.Key IS NOT NULL
             GROUP BY a1.Action
             ) b2
-        ON b1.Action = b2.Action JOIN (actions, categories) ON (actions.ID = b1.Action AND actions.Category = categories.ID)
-        GROUP BY actions.Category
+        ON b1.Action = b2.Action JOIN (actions, actionTypes) ON (actions.ID = b1.Action AND actions.ActionType = actionTypes.ID)
+        GROUP BY actions.ActionType
         ORDER BY IFNULL(b1.Done, 0)+IFNULL(b2.Referenced, 0) DESC"
 
     getStatistics req, res, next, statisticsQuery
@@ -207,6 +207,6 @@ exports.recommendCategories = ( req, res, next ) ->
 
 # SELECT users.UUID, actions.Name, COUNT(activities.Key) as Count FROM activities, actions, users WHERE users.ID = activities.User AND actions.ID = activities.Action GROUP BY activities.User, activities.Action ORDER BY activities.User, Count DESC
 
-# SELECT users.UUID, categories.Name, COUNT(activities.Key) as Count FROM activities, actions, users, categories WHERE users.ID = activities.User AND actions.Category = categories.ID AND actions.ID = activities.Action GROUP BY activities.User, actions.Category ORDER BY activities.User, Count DESC
+# SELECT users.UUID, actionTypes.Name, COUNT(activities.Key) as Count FROM activities, actions, users, actionTypes WHERE users.ID = activities.User AND actions.ActionType = actionTypes.ID AND actions.ID = activities.Action GROUP BY activities.User, actions.ActionType ORDER BY activities.User, Count DESC
 
 # SELECT a1.*, COUNT(*) as selfRefs, SUM(numOfRefs) FROM (SELECT a1.*, COUNT(a2.Reference) as numOfRefs FROM (SELECT * FROM activities WHERE User=1) a1 LEFT OUTER JOIN activities a2 ON ( a2.Reference IS NOT NULL AND a1.Key=a2.Reference ) GROUP BY a1.Key) as a1 GROUP BY a1.Action

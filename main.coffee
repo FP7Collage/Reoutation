@@ -10,8 +10,8 @@ server.get '/', (req, res, next) ->
     next()
 server.post '/activities/perform', profiling.performActivity
 server.get '/skills/recommend', profiling.recommendSkills
-server.get '/actions/recommend', profiling.recommendActivities
-server.get '/categories/recommend', profiling.recommendCategories
+server.get '/actions/recommend', profiling.recommendActions
+server.get '/actionTypes/recommend', profiling.recommendActionTypes
 
 server.listen 80, () ->
     console.log '%s listening at %s', server.name, server.url
