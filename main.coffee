@@ -9,7 +9,7 @@ server.get '/', (req, res, next) ->
     res.send 'Hello World'
     next()
 server.post '/activities/perform', profiling.performActivity
-server.get '/tags/recommend', profiling.recommendTags
+server.get '/skills/recommend', profiling.recommendSkills
 server.get '/actions/recommend', profiling.recommendActivities
 server.get '/categories/recommend', profiling.recommendCategories
 
