@@ -87,13 +87,13 @@ CREATE TABLE IF NOT EXISTS `activities` (
 -- Dumping data for table reputation.activities: ~11 rows (approximately)
 /*!40000 ALTER TABLE `activities` DISABLE KEYS */;
 INSERT INTO `activities` (`Key`, `User`, `Action`, `Skill`, `Reference`, `Date`) VALUES
-	(1, 1, 2, 1, 'p1', '2014-02-04 11:16:52'),
+	(1, 1, 8, 1, 'p1', '2014-02-04 11:16:52'),
 	(2, 1, 5, 1, 'p2', '2014-02-04 11:17:35'),
 	(3, 1, 9, 3, 'p3', '2012-02-07 14:56:04'),
 	(4, 1, 4, 5, 'p4', '2014-02-07 15:35:23'),
 	(5, 1, 5, 5, 'p5', '2014-02-10 11:12:00'),
 	(6, 1, 6, 5, 'p6', '2014-02-10 11:12:07'),
-	(7, 1, 1, 5, 'p7', '2014-02-10 11:33:52'),
+	(7, 1, 7, 5, 'p7', '2014-02-10 11:33:52'),
 	(8, 2, 9, 5, 'p1', '2014-02-10 11:33:52'),
 	(9, 3, 9, 5, 'p1', '2014-02-10 11:33:52'),
 	(10, 3, 9, 5, 'p7', '2014-02-10 11:33:52'),
@@ -158,21 +158,44 @@ CREATE TABLE IF NOT EXISTS `userSkills` (
   `User` int(10) unsigned NOT NULL,
   `Skill` int(10) unsigned NOT NULL,
   `Action` int(10) unsigned NOT NULL,
-  `Ti` int(10) unsigned NOT NULL,
-  `Asi` int(10) unsigned NOT NULL DEFAULT '0',
-  `Aspri` int(10) unsigned NOT NULL DEFAULT '0',
+  `Time` int(10) unsigned NOT NULL DEFAULT '0',
+  `Count` int(10) unsigned NOT NULL DEFAULT '0',
+  `Rating` int(10) unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`Key`),
-  KEY `Users to userSkills` (`User`),
+  UNIQUE KEY `Combined index` (`User`,`Skill`,`Action`),
   KEY ` Skills to userSkills` (`Skill`),
   KEY `Actions to userSkills` (`Action`),
-  CONSTRAINT `Users to userSkills` FOREIGN KEY (`User`) REFERENCES `users` (`ID`),
   CONSTRAINT ` Skills to userSkills` FOREIGN KEY (`Skill`) REFERENCES `skills` (`ID`),
-  CONSTRAINT `Actions to userSkills` FOREIGN KEY (`Action`) REFERENCES `actions` (`ID`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+  CONSTRAINT `Actions to userSkills` FOREIGN KEY (`Action`) REFERENCES `actions` (`ID`),
+  CONSTRAINT `Users to userSkills` FOREIGN KEY (`User`) REFERENCES `users` (`ID`)
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
--- Dumping data for table reputation.userSkills: ~0 rows (approximately)
+-- Dumping data for table reputation.userSkills: ~9 rows (approximately)
 /*!40000 ALTER TABLE `userSkills` DISABLE KEYS */;
+INSERT INTO `userSkills` (`Key`, `User`, `Skill`, `Action`, `Time`, `Count`, `Rating`) VALUES
+	(1, 1, 1, 8, 0, 1, 2),
+	(2, 1, 1, 5, 0, 1, 0),
+	(3, 1, 3, 9, 0, 1, 0),
+	(4, 1, 5, 4, 0, 1, 0),
+	(5, 1, 5, 5, 0, 1, 0),
+	(6, 1, 5, 6, 0, 1, 0),
+	(7, 1, 5, 7, 0, 1, 1),
+	(8, 2, 5, 9, 0, 1, 0),
+	(9, 3, 5, 9, 0, 3, 0);
 /*!40000 ALTER TABLE `userSkills` ENABLE KEYS */;
+
+
+-- Dumping structure for trigger reputation.activity_insert
+SET @OLDTMP_SQL_MODE=@@SQL_MODE, SQL_MODE='';
+DELIMITER //
+CREATE TRIGGER `activity_insert` AFTER INSERT ON `activities` FOR EACH ROW BEGIN
+		INSERT INTO userSkills (User, Skill, Action, Count) VALUES (NEW.User, NEW.Skill, NEW.Action, 1) ON DUPLICATE KEY UPDATE Count = Count + 1;
+		
+		UPDATE userSkills, (SELECT User, Action, Skill FROM activities WHERE Reference = NEW.Reference AND User != NEW.User AND Action IN (SELECT ID FROM actions WHERE actions.ActionType = 3) LIMIT 1) as referencedRow SET Rating = Rating + 1 WHERE userSkills.User = referencedRow.User AND userSkills.Skill = referencedRow.Skill AND userSkills.Action = referencedRow.Action;
+
+	END//
+DELIMITER ;
+SET SQL_MODE=@OLDTMP_SQL_MODE;
 /*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;
 /*!40014 SET FOREIGN_KEY_CHECKS=IF(@OLD_FOREIGN_KEY_CHECKS IS NULL, 1, @OLD_FOREIGN_KEY_CHECKS) */;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
