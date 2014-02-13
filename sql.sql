@@ -82,7 +82,7 @@ CREATE TABLE IF NOT EXISTS `activities` (
   CONSTRAINT `Skills to activities` FOREIGN KEY (`Skill`) REFERENCES `skills` (`ID`),
   CONSTRAINT `Actions to activities` FOREIGN KEY (`Action`) REFERENCES `actions` (`ID`),
   CONSTRAINT `Users to activities` FOREIGN KEY (`User`) REFERENCES `users` (`ID`)
-) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 -- Dumping data for table reputation.activities: ~11 rows (approximately)
 /*!40000 ALTER TABLE `activities` DISABLE KEYS */;
@@ -97,23 +97,28 @@ INSERT INTO `activities` (`Key`, `User`, `Action`, `Skill`, `Reference`, `Date`)
 	(8, 2, 9, 5, 'p1', '2014-02-10 11:33:52'),
 	(9, 3, 9, 5, 'p1', '2014-02-10 11:33:52'),
 	(10, 3, 9, 5, 'p7', '2014-02-10 11:33:52'),
-	(11, 3, 9, 5, 'p9', '2014-02-10 11:33:52');
+	(11, 3, 9, 5, 'p9', '2014-02-10 11:33:52'),
+	(13, 2, 8, 1, 'p10', '2014-02-13 11:38:56'),
+	(14, 2, 8, 1, 'p10', '2014-02-13 11:38:56');
 /*!40000 ALTER TABLE `activities` ENABLE KEYS */;
 
 
--- Dumping structure for table reputation.GoalTings
-CREATE TABLE IF NOT EXISTS `GoalTings` (
+-- Dumping structure for table reputation.goalUpdates
+CREATE TABLE IF NOT EXISTS `goalUpdates` (
   `Key` int(10) unsigned NOT NULL AUTO_INCREMENT,
-  `Thing` int(10) unsigned NOT NULL COMMENT 'The thing they did',
+  `User` int(10) unsigned NOT NULL DEFAULT '0',
+  `Status` enum('ACCEPT','DECLINE','VIEW INFO','PROGRESS','COMPLETE','TIME OUT','GIVE UP') COLLATE utf8_unicode_ci NOT NULL COMMENT 'The thing what they do',
   `QuestID` int(10) unsigned NOT NULL,
   `Reference` varchar(50) COLLATE utf8_unicode_ci DEFAULT NULL,
   `Date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`Key`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='Stuff what happens to goals init';
+  PRIMARY KEY (`Key`),
+  KEY `goalUpdate to user` (`User`),
+  CONSTRAINT `goalUpdate to user` FOREIGN KEY (`User`) REFERENCES `users` (`ID`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='When the user does a thing';
 
--- Dumping data for table reputation.GoalTings: ~0 rows (approximately)
-/*!40000 ALTER TABLE `GoalTings` DISABLE KEYS */;
-/*!40000 ALTER TABLE `GoalTings` ENABLE KEYS */;
+-- Dumping data for table reputation.goalUpdates: ~0 rows (approximately)
+/*!40000 ALTER TABLE `goalUpdates` DISABLE KEYS */;
+/*!40000 ALTER TABLE `goalUpdates` ENABLE KEYS */;
 
 
 -- Dumping structure for table reputation.skills
@@ -161,6 +166,7 @@ CREATE TABLE IF NOT EXISTS `userSkills` (
   `Time` int(10) unsigned NOT NULL DEFAULT '0',
   `Count` int(10) unsigned NOT NULL DEFAULT '0',
   `Rating` int(10) unsigned NOT NULL DEFAULT '0',
+  `PDV` float unsigned NOT NULL DEFAULT '0',
   PRIMARY KEY (`Key`),
   UNIQUE KEY `Combined index` (`User`,`Skill`,`Action`),
   KEY ` Skills to userSkills` (`Skill`),
@@ -168,20 +174,21 @@ CREATE TABLE IF NOT EXISTS `userSkills` (
   CONSTRAINT ` Skills to userSkills` FOREIGN KEY (`Skill`) REFERENCES `skills` (`ID`),
   CONSTRAINT `Actions to userSkills` FOREIGN KEY (`Action`) REFERENCES `actions` (`ID`),
   CONSTRAINT `Users to userSkills` FOREIGN KEY (`User`) REFERENCES `users` (`ID`)
-) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 -- Dumping data for table reputation.userSkills: ~9 rows (approximately)
 /*!40000 ALTER TABLE `userSkills` DISABLE KEYS */;
-INSERT INTO `userSkills` (`Key`, `User`, `Skill`, `Action`, `Time`, `Count`, `Rating`) VALUES
-	(1, 1, 1, 8, 0, 1, 2),
-	(2, 1, 1, 5, 0, 1, 0),
-	(3, 1, 3, 9, 0, 1, 0),
-	(4, 1, 5, 4, 0, 1, 0),
-	(5, 1, 5, 5, 0, 1, 0),
-	(6, 1, 5, 6, 0, 1, 0),
-	(7, 1, 5, 7, 0, 1, 1),
-	(8, 2, 5, 9, 0, 1, 0),
-	(9, 3, 5, 9, 0, 3, 0);
+INSERT INTO `userSkills` (`Key`, `User`, `Skill`, `Action`, `Time`, `Count`, `Rating`, `PDV`) VALUES
+	(1, 1, 1, 8, 0, 1, 2, 1.33333),
+	(2, 1, 1, 5, 0, 1, 0, 1),
+	(3, 1, 3, 9, 0, 1, 0, 1),
+	(4, 1, 5, 4, 0, 1, 0, 1),
+	(5, 1, 5, 5, 0, 1, 0, 1),
+	(6, 1, 5, 6, 0, 1, 0, 1),
+	(7, 1, 5, 7, 0, 1, 1, 1),
+	(8, 2, 5, 9, 0, 1, 0, 0.5),
+	(9, 3, 5, 9, 0, 3, 0, 1.5),
+	(12, 2, 1, 8, 0, 2, 0, 0);
 /*!40000 ALTER TABLE `userSkills` ENABLE KEYS */;
 
 
@@ -192,7 +199,8 @@ CREATE TRIGGER `activity_insert` AFTER INSERT ON `activities` FOR EACH ROW BEGIN
 		INSERT INTO userSkills (User, Skill, Action, Count) VALUES (NEW.User, NEW.Skill, NEW.Action, 1) ON DUPLICATE KEY UPDATE Count = Count + 1;
 		
 		UPDATE userSkills, (SELECT User, Action, Skill FROM activities WHERE Reference = NEW.Reference AND User != NEW.User AND Action IN (SELECT ID FROM actions WHERE actions.ActionType = 3) LIMIT 1) as referencedRow SET Rating = Rating + 1 WHERE userSkills.User = referencedRow.User AND userSkills.Skill = referencedRow.Skill AND userSkills.Action = referencedRow.Action;
-
+		
+		UPDATE userSkills, (SELECT Skill, Action, AVG(Count)as avgCount, AVG(Rating) as avgRating FROM userSkills GROUP BY Skill, Action) as avg SET PDV = (Count/avgCount + IFNULL(Rating/avgRating, 1)) WHERE userSkills.Skill = avg.Skill AND userSkills.Action = avg.Action;
 	END//
 DELIMITER ;
 SET SQL_MODE=@OLDTMP_SQL_MODE;
