@@ -198,9 +198,31 @@ DELIMITER //
 CREATE TRIGGER `activity_insert` AFTER INSERT ON `activities` FOR EACH ROW BEGIN
 		INSERT INTO userSkills (User, Skill, Action, Count) VALUES (NEW.User, NEW.Skill, NEW.Action, 1) ON DUPLICATE KEY UPDATE Count = Count + 1;
 		
-		UPDATE userSkills, (SELECT User, Action, Skill FROM activities WHERE Reference = NEW.Reference AND User != NEW.User AND Action IN (SELECT ID FROM actions WHERE actions.ActionType = 3) LIMIT 1) as referencedRow SET Rating = Rating + 1 WHERE userSkills.User = referencedRow.User AND userSkills.Skill = referencedRow.Skill AND userSkills.Action = referencedRow.Action;
+		UPDATE userSkills, (
+			SELECT User, Action, Skill
+			FROM activities
+			WHERE Reference = NEW.Reference
+				AND User != NEW.User
+				AND Action IN (
+					SELECT ID
+					FROM actions
+					WHERE actions.ActionType = 3
+				)
+				LIMIT 1
+			) as referencedRow 
+		SET Rating = Rating + 1
+		WHERE userSkills.User = referencedRow.User
+			AND userSkills.Skill = referencedRow.Skill
+			AND userSkills.Action = referencedRow.Action;
 		
-		UPDATE userSkills, (SELECT Skill, Action, AVG(Count)as avgCount, AVG(Rating) as avgRating FROM userSkills GROUP BY Skill, Action) as avg SET PDV = (Count/avgCount + IFNULL(Rating/avgRating, 1)) WHERE userSkills.Skill = avg.Skill AND userSkills.Action = avg.Action;
+		UPDATE userSkills, (
+			SELECT Skill, Action, AVG(Count) as avgCount, AVG(Rating) as avgRating
+			FROM userSkills
+			GROUP BY Skill, Action
+		) as avg
+		SET PDV = (Count/avgCount + IFNULL(Rating/avgRating, 1))
+		WHERE userSkills.Skill = avg.Skill
+			AND userSkills.Action = avg.Action;
 	END//
 DELIMITER ;
 SET SQL_MODE=@OLDTMP_SQL_MODE;
