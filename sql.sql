@@ -2,7 +2,7 @@
 -- Host:                         10.0.0.2
 -- Server version:               5.5.30-1.1 - (Debian)
 -- Server OS:                    debian-linux-gnu
--- HeidiSQL Version:             8.0.0.4527
+-- HeidiSQL Version:             8.3.0.4694
 -- --------------------------------------------------------
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS `activities` (
   CONSTRAINT `Users to activities` FOREIGN KEY (`User`) REFERENCES `users` (`ID`)
 ) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
--- Dumping data for table reputation.activities: ~11 rows (approximately)
+-- Dumping data for table reputation.activities: ~13 rows (approximately)
 /*!40000 ALTER TABLE `activities` DISABLE KEYS */;
 INSERT INTO `activities` (`Key`, `User`, `Action`, `Skill`, `Reference`, `Date`) VALUES
 	(1, 1, 8, 1, 'p1', '2014-02-04 11:16:52'),
@@ -140,6 +140,29 @@ INSERT INTO `skills` (`ID`, `Name`) VALUES
 /*!40000 ALTER TABLE `skills` ENABLE KEYS */;
 
 
+-- Dumping structure for table reputation.userPreferences
+CREATE TABLE IF NOT EXISTS `userPreferences` (
+  `ID` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `User` int(10) unsigned NOT NULL,
+  `Action` int(10) unsigned NOT NULL,
+  `Skill` int(10) unsigned NOT NULL,
+  `Feedback` enum('Y','N') COLLATE utf8_unicode_ci NOT NULL,
+  `Level` enum('goal','action') COLLATE utf8_unicode_ci NOT NULL,
+  `Date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`ID`),
+  KEY `Preferences - User` (`User`),
+  KEY `Preferences - Action` (`Action`),
+  KEY `Preferences - Skill` (`Skill`),
+  CONSTRAINT `Preferences - User` FOREIGN KEY (`User`) REFERENCES `users` (`ID`),
+  CONSTRAINT `Preferences - Action` FOREIGN KEY (`Action`) REFERENCES `actions` (`ID`),
+  CONSTRAINT `Preferences - Skill` FOREIGN KEY (`Skill`) REFERENCES `skills` (`ID`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+-- Dumping data for table reputation.userPreferences: ~0 rows (approximately)
+/*!40000 ALTER TABLE `userPreferences` DISABLE KEYS */;
+/*!40000 ALTER TABLE `userPreferences` ENABLE KEYS */;
+
+
 -- Dumping structure for table reputation.users
 CREATE TABLE IF NOT EXISTS `users` (
   `ID` int(11) unsigned NOT NULL AUTO_INCREMENT,
@@ -176,7 +199,7 @@ CREATE TABLE IF NOT EXISTS `userSkills` (
   CONSTRAINT `Users to userSkills` FOREIGN KEY (`User`) REFERENCES `users` (`ID`)
 ) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
--- Dumping data for table reputation.userSkills: ~9 rows (approximately)
+-- Dumping data for table reputation.userSkills: ~10 rows (approximately)
 /*!40000 ALTER TABLE `userSkills` DISABLE KEYS */;
 INSERT INTO `userSkills` (`Key`, `User`, `Skill`, `Action`, `Time`, `Count`, `Rating`, `PDV`) VALUES
 	(1, 1, 1, 8, 0, 1, 2, 1.33333),
