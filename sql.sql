@@ -15,6 +15,26 @@ CREATE DATABASE IF NOT EXISTS `reputation` /*!40100 DEFAULT CHARACTER SET utf8 C
 USE `reputation`;
 
 
+-- Dumping structure for table reputation.actionMap
+CREATE TABLE IF NOT EXISTS `actionMap` (
+  `ID` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `Action` int(11) unsigned NOT NULL,
+  `Name` varchar(100) COLLATE utf8_unicode_ci DEFAULT NULL,
+  PRIMARY KEY (`ID`),
+  UNIQUE KEY `Name` (`Name`),
+  KEY `FK__actions_map` (`Action`),
+  CONSTRAINT `FK__actions_map` FOREIGN KEY (`Action`) REFERENCES `actions` (`ID`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+-- Dumping data for table reputation.actionMap: ~3 rows (approximately)
+/*!40000 ALTER TABLE `actionMap` DISABLE KEYS */;
+INSERT INTO `actionMap` (`ID`, `Action`, `Name`) VALUES
+	(1, 5, 'create_post'),
+	(2, 1, 'play_audio'),
+	(3, 9, 'approve');
+/*!40000 ALTER TABLE `actionMap` ENABLE KEYS */;
+
+
 -- Dumping structure for table reputation.actions
 CREATE TABLE IF NOT EXISTS `actions` (
   `ID` int(11) unsigned NOT NULL AUTO_INCREMENT,
