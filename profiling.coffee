@@ -83,16 +83,28 @@ getStatistics = ( req, res, next, queryString ) ->
     .done()
 
 
+exports.addUser = ( req, res, next ) ->
+    return unless reqParam( req, next, 'id' )
+    query("INSERT INTO `users` SET ?", { UUID: req.params.id })
+    .then( (wat) ->
+        console.log "woop", wat
+        res.send 204
+    )
+    .fail( (whoops) ->
+        console.error "arse", whoops
+        res.send 500, "Shit broke: " + whoops
+    )
+    .finally(next)
+    .done()
+
 # /api/activities/perform
 # json payload
 # {  }
 exports.performActivity = ( req, res, next ) ->
-    # add tags to db when new ones aded to logquet
-    # add users to db when new ones added to logquest
     console.log "got call!"
 
     return unless reqParam( req, next, 'type' ) and reqParam( req, next, 'target' ) and reqParam( req, next, 'activator' )
-    
+
     butts = for skill in req.params.target.skills
         Q.all([
             getCacheAction req.params.type

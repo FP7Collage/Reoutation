@@ -8,6 +8,7 @@ server.use restify.bodyParser()
 server.get '/', (req, res, next) ->
     res.send 'Hello World'
     next()
+server.post '/users', profiling.addUser
 server.post '/activities/perform', profiling.performActivity
 server.get '/skills/recommend', profiling.recommendSkills
 server.get '/actions/recommend', profiling.recommendActions
