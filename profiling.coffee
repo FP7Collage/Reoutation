@@ -32,6 +32,15 @@ getCacheItem = ( key, name ) ->
         console.log "Results!", results
         cache[ key ][ name ] = results[0]?.ID || false
 
+getCacheAction = ( name ) ->
+    cacheItem = cache[ 'actions' ][ name ]
+    console.log "cache get actions", name
+    if cacheItem != undefined
+        return Q( cacheItem )
+    query( 'SELECT `Action` FROM actionMap WHERE `Name` = ?', [ name ] ).then (results) ->
+        console.log "Results!", results
+        cache[ 'actions' ][ name ] = results[0]?.Action || false
+
 getCacheUser = ( UUID ) ->
     cacheUser = cache[ 'users' ][ UUID ]
     console.log "cache get", 'users', UUID
@@ -78,25 +87,30 @@ getStatistics = ( req, res, next, queryString ) ->
 # json payload
 # {  }
 exports.performActivity = ( req, res, next ) ->
+    # add tags to db when new ones aded to logquet
+    # add users to db when new ones added to logquest
     console.log "got call!"
 
-    return unless reqParam( req, next, 'action' ) and reqParam( req, next, 'skill' )
-
-    userID = 1 #magical lookup on UID '4FA06769-C5C7-432B-9E37-4A3E7B4D294D'
-        
-    Q.all([
-        getCacheItem 'actions', req.params.action
-        getCacheItem 'skills', req.params.skill
-    ]).spread( ( actionID, skillID ) ->
-        console.log "Got IDs", arguments
-        return next new restify.InvalidArgumentError "Unknown action '#{req.params.action}'" unless actionID
-        return next new restify.InvalidArgumentError "Unknown skill '#{req.params.skill}'" unless skilID
-        query "INSERT INTO `activities` SET ?", [{
-            User: userID
-            Action: actionID
-            Skill: skillID
-        }]
-    )
+    return unless reqParam( req, next, 'type' ) and reqParam( req, next, 'target' ) and reqParam( req, next, 'activator' )
+    
+    butts = for skill in req.params.target.skills
+        Q.all([
+            getCacheAction req.params.type
+            getCacheItem 'skills', skill
+            getCacheUser req.params.activator.id
+        ]).spread( ( actionID, skillID, userID ) ->
+            console.log "Got IDs", arguments
+            return next new restify.InvalidArgumentError "Unknown action type '#{req.params.type}'" unless actionID
+            return next new restify.InvalidArgumentError "Unknown target '#{req.params.target}'" unless skillID
+            return next new restify.InvalidArgumentError "Unknown user '#{req.params.activator}'" unless userID
+            query "INSERT INTO `activities` SET ?", [{
+                User: userID
+                Action: actionID
+                Skill: skillID
+                Reference: req.params.target.id
+            }]
+        )
+    Q.all(butts)
     .then( (wat) ->
         console.log "woop", wat
         res.send 204
