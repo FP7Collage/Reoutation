@@ -105,7 +105,7 @@ exports.performActivity = ( req, res, next ) ->
 
     return unless reqParam( req, next, 'type' ) and reqParam( req, next, 'target' ) and reqParam( req, next, 'activator' )
 
-    butts = for skill in req.params.target.skills
+    butts = for skill in req.params.target.tags
         Q.all([
             getCacheAction req.params.type
             getCacheItem 'skills', skill
