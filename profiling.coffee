@@ -66,14 +66,22 @@ getStatistics = ( req, res, next, queryString ) ->
         query queryString, [ userID, userID ]
     )
     .then( (wat) ->
+        # if no data found - return random?
+        if req.params.names
+            wat = (oneWat for oneWat in wat when oneWat.Name.toLowerCase() in req.params.names)
 
         sum = wat.reduce ( ( total, oneWat) -> total + ( oneWat.Done || 0 ) + ( oneWat.Referenced || 0 ) ), 0
 
+        cumulativeProbability = 0
+        randomNumber = Math.random()
         for oneWat in wat
             oneWat.Probability = ( ( oneWat.Done || 0 ) + ( oneWat.Referenced || 0 ) )/sum
+            cumulativeProbability += oneWat.Probability
+            if randomNumber <= cumulativeProbability
+                console.log "woop", oneWat
+                res.send 200, oneWat
+                return
 
-        console.log "woop", wat
-        res.send 200, wat
     )
     .fail( (whoops) ->
         console.error "arse", whoops
