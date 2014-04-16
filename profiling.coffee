@@ -74,7 +74,7 @@ getStatistics = ( req, res, next, queryString ) ->
         results = []
 
         if wat.length < 1
-            results = req.params.names.map ( name ) -> { Name: name, Done: 0, Referenced: 0, Probability: (1/req.params.names.length).toFixed(2) }
+            results = req.params.names.map ( name ) -> { Name: name, Done: 0, Referenced: 0, Probability: parseFloat( (1/req.params.names.length).toFixed(2) ) }
         else
             found_sum = wat.reduce ( ( total, oneWat) -> total + ( oneWat.Done || 0 ) + ( oneWat.Referenced || 0 ) ), 0
             results = req.params.names.map ( name ) -> 
@@ -84,7 +84,7 @@ getStatistics = ( req, res, next, queryString ) ->
                         found = oneWat
                         break
                 if found
-                    found.Probability = ( ( ( found.Done || 0 ) + ( found.Referenced || 0 ) )/found_sum ).toFixed(2)
+                    found.Probability = parseFloat( ( ( ( found.Done || 0 ) + ( found.Referenced || 0 ) )/found_sum ).toFixed(2) )
                     return found
                 else
                     return { Name: name, Done: 0, Referenced: 0, Probability: 0 }
