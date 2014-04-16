@@ -58,29 +58,40 @@ reqParam = ( req, next, p ) ->
 
 getStatistics = ( req, res, next, queryString ) ->
     return unless reqParam( req, next, 'user' )
+    return unless reqParam( req, next, 'names' )
         
     Q(
         getCacheUser req.params.user
     ).then( ( userID ) ->
         return next new restify.InvalidArgumentError "Unknown user '#{req.params.user}'" unless userID
-        query queryString, [ userID, userID ]
+        query queryString, [ userID, userID, req.params.names ]
     )
     .then( (wat) ->
-        # if no data found - return random?
-        if req.params.names
-            wat = (oneWat for oneWat in wat when oneWat.Name.toLowerCase() in req.params.names)
 
-        sum = wat.reduce ( ( total, oneWat) -> total + ( oneWat.Done || 0 ) + ( oneWat.Referenced || 0 ) ), 0
+        if not wat instanceof Array
+            return
 
-        cumulativeProbability = 0
-        randomNumber = Math.random()
-        for oneWat in wat
-            oneWat.Probability = ( ( oneWat.Done || 0 ) + ( oneWat.Referenced || 0 ) )/sum
-            cumulativeProbability += oneWat.Probability
-            if randomNumber <= cumulativeProbability
-                console.log "woop", oneWat
-                res.send 200, oneWat
-                return
+        results = []
+
+        if wat.length < 1
+            results = req.params.names.map ( name ) -> { Name: name, Done: 0, Referenced: 0, Probability: (1/req.params.names.length).toFixed(2) }
+        else
+            found_sum = wat.reduce ( ( total, oneWat) -> total + ( oneWat.Done || 0 ) + ( oneWat.Referenced || 0 ) ), 0
+            results = req.params.names.map ( name ) -> 
+                found = false
+                for oneWat in wat
+                    if oneWat.Name.toLowerCase() == name.toLowerCase()
+                        found = oneWat
+                        break
+                if found
+                    found.Probability = ( ( ( found.Done || 0 ) + ( found.Referenced || 0 ) )/found_sum ).toFixed(2)
+                    return found
+                else
+                    return { Name: name, Done: 0, Referenced: 0, Probability: 0 }
+
+        console.log "woop", results
+        res.send 200, results
+        return results
 
     )
     .fail( (whoops) ->
@@ -89,7 +100,6 @@ getStatistics = ( req, res, next, queryString ) ->
     )
     .finally(next)
     .done()
-
 
 exports.addUser = ( req, res, next ) ->
     return unless reqParam( req, next, 'id' )
@@ -167,7 +177,7 @@ exports.recommendSkills = ( req, res, next ) ->
                 a2.Key IS NOT NULL
             GROUP BY a1.Skill
             ) b2
-        ON b1.Skill = b2.Skill JOIN skills ON skills.ID = b1.Skill 
+        ON b1.Skill = b2.Skill JOIN skills ON skills.ID = b1.Skill AND skills.Name IN (?)
         ORDER BY IFNULL(b1.Done, 0)+IFNULL(b2.Referenced, 0) DESC" # maybe move user=? to later WHERE
 
     getStatistics req, res, next, statisticsQuery
@@ -197,7 +207,7 @@ exports.recommendActions = ( req, res, next ) ->
                 a2.Key IS NOT NULL
             GROUP BY a1.Action
             ) b2
-        ON b1.Action = b2.Action JOIN actions ON actions.ID = b1.Action
+        ON b1.Action = b2.Action JOIN actions ON actions.ID = b1.Action AND actions.Name IN (?)
         ORDER BY IFNULL(b1.Done, 0)+IFNULL(b2.Referenced, 0) DESC"
 
     getStatistics req, res, next, statisticsQuery
@@ -227,7 +237,7 @@ exports.recommendActionTypes = ( req, res, next ) ->
                 a2.Key IS NOT NULL
             GROUP BY a1.Action
             ) b2
-        ON b1.Action = b2.Action JOIN (actions, actionTypes) ON (actions.ID = b1.Action AND actions.ActionType = actionTypes.ID)
+        ON b1.Action = b2.Action JOIN (actions, actionTypes) ON (actions.ID = b1.Action AND actions.ActionType = actionTypes.ID) AND actionTypes.Name IN (?)
         GROUP BY actions.ActionType
         ORDER BY IFNULL(b1.Done, 0)+IFNULL(b2.Referenced, 0) DESC"
 
