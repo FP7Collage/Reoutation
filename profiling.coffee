@@ -131,7 +131,7 @@ exports.performActivity = ( req, res, next ) ->
         ]).spread( ( actionID, skillID, userID ) ->
             console.log "Got IDs", arguments
             return next new restify.InvalidArgumentError "Unknown action type '#{req.params.type}'" unless actionID
-            return next new restify.InvalidArgumentError "Unknown target '#{req.params.target}'" unless skillID
+            return next new restify.InvalidArgumentError "Unknown target '#{skill}'" unless skillID
             return next new restify.InvalidArgumentError "Unknown user '#{req.params.activator}'" unless userID
             query "INSERT INTO `activities` SET ?", [{
                 User: userID
