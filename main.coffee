@@ -16,13 +16,13 @@ jsonClient.post '/listeners', {
 	"id": "reputationEvents",
 	"type": "Event",
 	"callback": argv.reputations+"/activities/perform"
-}, () ->
+}, (err, req, res, obj) -> console.log 'Register listener:', err, res.body, obj
 
 jsonClient.post '/listeners', { 
 	"id": "reputationUsers",
 	"type": "UserCreate",
 	"callback": argv.reputations+"/users"
-}, () ->
+}, (err, req, res, obj) -> console.log 'Register listener:', err, res.body, obj
 
 server = restify.createServer()
 server.use restify.queryParser()
