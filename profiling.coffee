@@ -6,10 +6,18 @@ restify = require 'restify'
 connection = null
 
 connect = () ->
+    dbString = process.env.DATABASE;
+    dbVars = [];
+    if dbString
+        dbVars = dbString.split(':');
+    else
+        dbVars = ['localhost', 3306];
+
     connection = mysql.createConnection
-        host: '10.0.0.2'
-        user: 'reputation'
-        password: 'reputation'
+        host: dbVars[0],
+        port: dbVars[1],
+        user: 'reputation',
+        password: 'reputation',
         database: 'reputation'
 
 query = ( txt, args = [] ) ->
