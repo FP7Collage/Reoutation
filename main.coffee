@@ -6,8 +6,8 @@ argv = require('yargs').demand(['reputations', 'gaminomics']).argv;
 # connect to gaminomics
 
 jsonClient = restify.createJsonClient
-	requestTimeout: 5
-	connectTimeout: 5
+	requestTimeout: 5000
+	connectTimeout: 5000
 	retry: false
 	url: argv.gaminomics
 	version: '*'
