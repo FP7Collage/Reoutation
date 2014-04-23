@@ -82,7 +82,7 @@ getRecommendations = ( req, res, next, queryString ) ->
         results = []
 
         if wat.length < 1
-            results = req.params.names.map ( name ) -> { Name: name, Done: 0, Referenced: 0, Probability: parseFloat( (1/req.params.names.length).toFixed(2) ) }
+            results = req.params.names.map ( name ) -> { Name: name, Done: 0, Referenced: 0, Probability: Math.floor( 100 / req.params.names.length ) / 100 }
         else
             found_sum = wat.reduce ( ( total, oneWat) -> total + ( oneWat.Done || 0 ) + ( oneWat.Referenced || 0 ) ), 0
             results = req.params.names.map ( name ) -> 
@@ -92,7 +92,7 @@ getRecommendations = ( req, res, next, queryString ) ->
                         found = oneWat
                         break
                 if found
-                    found.Probability = parseFloat( ( ( ( found.Done || 0 ) + ( found.Referenced || 0 ) )/found_sum ).toFixed(2) )
+                    found.Probability = Math.floor( ( ( found.Done || 0 ) + ( found.Referenced || 0 ) ) / found_sum * 100) / 100
                     return found
                 else
                     return { Name: name, Done: 0, Referenced: 0, Probability: 0 }
