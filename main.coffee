@@ -32,6 +32,7 @@ server.get '/', (req, res, next) ->
     next()
 server.post '/users', profiling.addUser
 server.post '/activities/perform', profiling.performActivity
+server.get '/skills/distribution', profiling.skillsDistribution
 server.get '/skills/recommend', profiling.recommendSkills
 server.get '/actions/recommend', profiling.recommendActions
 server.get '/actionTypes/recommend', profiling.recommendActionTypes

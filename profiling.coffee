@@ -160,6 +160,59 @@ exports.performActivity = ( req, res, next ) ->
     .finally(next)
     .done()
 
+exports.skillsDistribution = ( req, res, next ) ->
+    distributionQuery = "
+        SELECT
+            skills.Name as Skill, actions.Name as Action, COUNT(*) as Count
+        FROM
+            activities
+        JOIN actions ON 
+            actions.actionType = 3 AND activities.Action = actions.ID 
+        JOIN skills ON 
+            activities.Skill = skills.ID"
+    if req.params.user
+        distributionQuery += " JOIN users ON activities.User = users.ID AND User = ?"
+    distributionQuery += " GROUP BY
+            activities.Skill, activities.Action"
+
+    if req.params.user
+        promise = Q( getCacheUser req.params.user )
+            .then( ( userID ) ->
+                return next new restify.InvalidArgumentError "Unknown user '#{req.params.user}'" unless userID
+                query distributionQuery, [ userID ]
+            )
+    else
+        promise = query distributionQuery
+
+    promise.then( (wat) ->
+        results = {}
+
+        if wat.length > 0
+            sums = {"totalSum":0}
+            wat.forEach ( row ) ->
+                results[row.Skill] = results[row.Skill] || {"Actions": {}}
+                results[row.Skill].Actions[row.Action] = { Count: row.Count }
+                sums[row.Skill] = sums[row.Skill] || 0
+                sums[row.Skill] += row.Count
+                sums.totalSum += row.Count
+
+            for skill of results
+                for action of results[skill].Actions
+                    results[skill].Fraction = Math.floor( sums[skill] / sums.totalSum * 100 ) / 100
+                    results[skill].Actions[action].Fraction = Math.floor( results[skill].Actions[action].Count / sums[skill] * 100 ) / 100
+
+        console.log "woop", results
+        res.send 200, results
+        return results
+
+    )
+    .fail( (whoops) ->
+        console.error "arse", whoops
+        res.send 500, "Shit broke: " + whoops
+    )
+    .finally(next)
+    .done()
+
 exports.recommendSkills = ( req, res, next ) ->
     statisticsQuery = "
         SELECT skills.Name, b1.Done, b2.Referenced FROM 
