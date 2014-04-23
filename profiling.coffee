@@ -64,7 +64,7 @@ reqParam = ( req, next, p ) ->
         return false
     return true
 
-getStatistics = ( req, res, next, queryString ) ->
+getRecommendations = ( req, res, next, queryString ) ->
     return unless reqParam( req, next, 'user' )
     return unless reqParam( req, next, 'names' )
         
@@ -188,7 +188,7 @@ exports.recommendSkills = ( req, res, next ) ->
         ON b1.Skill = b2.Skill JOIN skills ON skills.ID = b1.Skill AND skills.Name IN (?)
         ORDER BY IFNULL(b1.Done, 0)+IFNULL(b2.Referenced, 0) DESC" # maybe move user=? to later WHERE
 
-    getStatistics req, res, next, statisticsQuery
+    getRecommendations req, res, next, statisticsQuery
 
 exports.recommendActions = ( req, res, next ) ->
     statisticsQuery = "
@@ -218,7 +218,7 @@ exports.recommendActions = ( req, res, next ) ->
         ON b1.Action = b2.Action JOIN actions ON actions.ID = b1.Action AND actions.Name IN (?)
         ORDER BY IFNULL(b1.Done, 0)+IFNULL(b2.Referenced, 0) DESC"
 
-    getStatistics req, res, next, statisticsQuery
+    getRecommendations req, res, next, statisticsQuery
     
 exports.recommendActionTypes = ( req, res, next ) ->
     statisticsQuery = "
@@ -249,7 +249,7 @@ exports.recommendActionTypes = ( req, res, next ) ->
         GROUP BY actions.ActionType
         ORDER BY IFNULL(b1.Done, 0)+IFNULL(b2.Referenced, 0) DESC"
 
-    getStatistics req, res, next, statisticsQuery
+    getRecommendations req, res, next, statisticsQuery
 
 
 # TODO: which query is faster
