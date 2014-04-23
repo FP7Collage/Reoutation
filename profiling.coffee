@@ -213,6 +213,40 @@ exports.skillsDistribution = ( req, res, next ) ->
     .finally(next)
     .done()
 
+exports.skillsCounts = ( req, res, next ) ->
+    console.log req.params
+    countsQuery = "
+        SELECT 
+            skills.Name as Skill, COUNT(activities.Key) as Count 
+        FROM 
+            activities, skills, actions
+        WHERE 
+            actions.actionType = 3 AND actions.ID = activities.Action AND skills.ID = activities.Skill"
+    if req.params.dateFrom
+        countsQuery += " AND activities.Date >= '" + req.params.dateFrom + "'" #FIXME: escape me
+    if req.params.dateTo
+        countsQuery += " AND activities.Date <= '" + req.params.dateTo + "'" #FIXME: escape me
+    countsQuery += " GROUP BY 
+            activities.Skill ORDER BY Count DESC, activities.Skill ASC"
+
+    query( countsQuery )
+    .then( (wat) ->
+        results = {}
+        wat.forEach ( oneWat ) ->
+            results[oneWat.Skill] = oneWat.Count
+
+        console.log "woop", results
+        res.send 200, results
+        return results
+
+    )
+    .fail( (whoops) ->
+        console.error "arse", whoops
+        res.send 500, "Shit broke: " + whoops
+    )
+    .finally(next)
+    .done()
+
 exports.recommendSkills = ( req, res, next ) ->
     statisticsQuery = "
         SELECT skills.Name, b1.Done, b2.Referenced FROM 
