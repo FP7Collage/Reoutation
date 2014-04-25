@@ -20,6 +20,12 @@ connect = () ->
         password: 'reputation',
         database: 'reputation'
 
+    connection.on "error", (e) ->
+        if e.code != 'PROTOCOL_CONNECTION_LOST'
+            throw e;
+        connect()
+
+
 query = ( txt, args = [] ) ->
     console.log "Query!", txt, args, connection?
     connect() unless connection?
