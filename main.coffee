@@ -12,13 +12,13 @@ jsonClient = restify.createJsonClient
 	url: argv.gaminomics
 	version: '*'
 
-jsonClient.post '/listeners', { 
+jsonClient.post '/listeners', {
 	"id": "reputationEvents",
 	"type": "Event",
 	"callback": argv.reputations+"/activities/perform"
 }, (err, req, res, obj) -> console.log 'Register listener:', err, res.body, obj
 
-jsonClient.post '/listeners', { 
+jsonClient.post '/listeners', {
 	"id": "reputationUsers",
 	"type": "UserCreate",
 	"callback": argv.reputations+"/users"

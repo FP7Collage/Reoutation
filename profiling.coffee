@@ -67,7 +67,7 @@ reqParam = ( req, next, p ) ->
 getRecommendations = ( req, res, next, queryString ) ->
     return unless reqParam( req, next, 'user' )
     return unless reqParam( req, next, 'names' )
-        
+
     Q(
         getCacheUser req.params.user
     ).then( ( userID ) ->
@@ -85,7 +85,7 @@ getRecommendations = ( req, res, next, queryString ) ->
             results = req.params.names.map ( name ) -> { Name: name, Done: 0, Referenced: 0, Probability: Math.floor( 100 / req.params.names.length ) / 100 }
         else
             found_sum = wat.reduce ( ( total, oneWat) -> total + ( oneWat.Done || 0 ) + ( oneWat.Referenced || 0 ) ), 0
-            results = req.params.names.map ( name ) -> 
+            results = req.params.names.map ( name ) ->
                 found = false
                 for oneWat in wat
                     if oneWat.Name.toLowerCase() == name.toLowerCase()
@@ -166,9 +166,9 @@ exports.skillsDistribution = ( req, res, next ) ->
             skills.Name as Skill, actions.Name as Action, COUNT(*) as Count
         FROM
             activities
-        JOIN actions ON 
-            actions.actionType = 3 AND activities.Action = actions.ID 
-        JOIN skills ON 
+        JOIN actions ON
+            actions.actionType = 3 AND activities.Action = actions.ID
+        JOIN skills ON
             activities.Skill = skills.ID"
     if req.params.user
         distributionQuery += " JOIN users ON activities.User = users.ID AND User = ?"
@@ -216,17 +216,17 @@ exports.skillsDistribution = ( req, res, next ) ->
 exports.skillsCounts = ( req, res, next ) ->
     console.log req.params
     countsQuery = "
-        SELECT 
-            skills.Name as Skill, COUNT(activities.Key) as Count 
-        FROM 
+        SELECT
+            skills.Name as Skill, COUNT(activities.Key) as Count
+        FROM
             activities, skills, actions
-        WHERE 
+        WHERE
             actions.actionType = 3 AND actions.ID = activities.Action AND skills.ID = activities.Skill"
     if req.params.dateFrom
         countsQuery += " AND activities.Date >= '" + req.params.dateFrom + "'" #FIXME: escape me
     if req.params.dateTo
         countsQuery += " AND activities.Date <= '" + req.params.dateTo + "'" #FIXME: escape me
-    countsQuery += " GROUP BY 
+    countsQuery += " GROUP BY
             activities.Skill ORDER BY Count DESC, activities.Skill ASC"
 
     query( countsQuery )
@@ -249,24 +249,24 @@ exports.skillsCounts = ( req, res, next ) ->
 
 exports.recommendSkills = ( req, res, next ) ->
     statisticsQuery = "
-        SELECT skills.Name, b1.Done, b2.Referenced FROM 
+        SELECT skills.Name, b1.Done, b2.Referenced FROM
             (
-            SELECT 
-                Skill, COUNT(*) as Done 
-            FROM 
-                activities 
-            WHERE 
+            SELECT
+                Skill, COUNT(*) as Done
+            FROM
+                activities
+            WHERE
                 User = ?
-            GROUP BY 
-                Skill 
+            GROUP BY
+                Skill
             ) b1
         LEFT OUTER JOIN
             (
-            SELECT 
+            SELECT
                 a1.Skill, COUNT(*) as Referenced
-            FROM 
-                (SELECT * FROM activities WHERE User = ?) a1 LEFT OUTER JOIN activities a2 
-            ON 
+            FROM
+                (SELECT * FROM activities WHERE User = ?) a1 LEFT OUTER JOIN activities a2
+            ON
                 ( a1.User != a2.User AND a1.Reference=a2.Reference )
             WHERE
                 a2.Key IS NOT NULL
@@ -279,24 +279,24 @@ exports.recommendSkills = ( req, res, next ) ->
 
 exports.recommendActions = ( req, res, next ) ->
     statisticsQuery = "
-        SELECT actions.Name, b1.Done, b2.Referenced FROM 
+        SELECT actions.Name, b1.Done, b2.Referenced FROM
             (
-            SELECT 
-                Action, COUNT(*) as Done 
-            FROM 
-                activities 
-            WHERE 
+            SELECT
+                Action, COUNT(*) as Done
+            FROM
+                activities
+            WHERE
                 User = ?
-            GROUP BY 
-                Action 
-            ) b1 
-        LEFT OUTER JOIN 
+            GROUP BY
+                Action
+            ) b1
+        LEFT OUTER JOIN
             (
-            SELECT 
+            SELECT
                 a1.Action, COUNT(*) as Referenced
-            FROM 
-                (SELECT * FROM activities WHERE User = ?) a1 LEFT OUTER JOIN activities a2 
-            ON 
+            FROM
+                (SELECT * FROM activities WHERE User = ?) a1 LEFT OUTER JOIN activities a2
+            ON
                 ( a1.User != a2.User AND a1.Reference=a2.Reference )
             WHERE
                 a2.Key IS NOT NULL
@@ -306,27 +306,27 @@ exports.recommendActions = ( req, res, next ) ->
         ORDER BY IFNULL(b1.Done, 0)+IFNULL(b2.Referenced, 0) DESC"
 
     getRecommendations req, res, next, statisticsQuery
-    
+
 exports.recommendActionTypes = ( req, res, next ) ->
     statisticsQuery = "
-        SELECT actionTypes.Name, SUM(b1.Done) as Done, SUM(b2.Referenced) as Referenced FROM 
+        SELECT actionTypes.Name, SUM(b1.Done) as Done, SUM(b2.Referenced) as Referenced FROM
             (
-            SELECT 
-                Action, COUNT(*) as Done 
-            FROM 
+            SELECT
+                Action, COUNT(*) as Done
+            FROM
                 activities
-            WHERE 
+            WHERE
                 User = ?
-            GROUP BY 
-                Action 
+            GROUP BY
+                Action
             ) b1
         LEFT OUTER JOIN
             (
-            SELECT 
+            SELECT
                 a1.Action, COUNT(*) as Referenced
-            FROM 
-                (SELECT * FROM activities WHERE User = ?) a1 LEFT OUTER JOIN activities a2 
-            ON 
+            FROM
+                (SELECT * FROM activities WHERE User = ?) a1 LEFT OUTER JOIN activities a2
+            ON
                 ( a1.User != a2.User AND a1.Reference=a2.Reference )
             WHERE
                 a2.Key IS NOT NULL
