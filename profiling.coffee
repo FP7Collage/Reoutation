@@ -249,9 +249,9 @@ exports.skillsCounts = ( req, res, next ) ->
         WHERE
             actions.actionType = 3 AND actions.ID = activities.Action AND skills.ID = activities.Skill"
     if req.params.dateFrom
-        countsQuery += " AND activities.Date >= '" + req.params.dateFrom + "'" #FIXME: escape me
+        countsQuery += " AND activities.Date >= '" + connection.escape req.params.dateFrom + "'"
     if req.params.dateTo
-        countsQuery += " AND activities.Date <= '" + req.params.dateTo + "'" #FIXME: escape me
+        countsQuery += " AND activities.Date <= '" + connection.escape req.params.dateTo + "'"
     countsQuery += " GROUP BY
             activities.Skill ORDER BY Count DESC, activities.Skill ASC"
 
