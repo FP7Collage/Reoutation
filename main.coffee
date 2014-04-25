@@ -1,27 +1,27 @@
 restify   = require 'restify'
 profiling = require './profiling'
-argv = require('yargs').demand(['reputations', 'gaminomics']).argv;
+argv = require('yargs').demand(['reputations', 'gaminomics']).argv
 
 
 # connect to gaminomics
 
 jsonClient = restify.createJsonClient
-	requestTimeout: 5000
-	connectTimeout: 5000
-	retry: false
-	url: argv.gaminomics
-	version: '*'
+    requestTimeout: 5000
+    connectTimeout: 5000
+    retry: false
+    url: argv.gaminomics
+    version: '*'
 
 jsonClient.post '/listeners', {
-	"id": "reputationEvents",
-	"type": "Event",
-	"callback": argv.reputations+"/activities/perform"
+    "id": "reputationEvents",
+    "type": "Event",
+    "callback": argv.reputations + "/activities/perform"
 }, (err, req, res, obj) -> console.log 'Register listener:', err, res.body, obj
 
 jsonClient.post '/listeners', {
-	"id": "reputationUsers",
-	"type": "UserCreate",
-	"callback": argv.reputations+"/users"
+    "id": "reputationUsers",
+    "type": "UserCreate",
+    "callback": argv.reputations + "/users"
 }, (err, req, res, obj) -> console.log 'Register listener:', err, res.body, obj
 
 server = restify.createServer()

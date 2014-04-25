@@ -1,4 +1,4 @@
-'use strict';
+'use strict'
 mysql   = require 'mysql'
 Q       = require 'q'
 restify = require 'restify'
@@ -6,12 +6,12 @@ restify = require 'restify'
 connection = null
 
 connect = () ->
-    dbString = process.env.DATABASE;
-    dbVars = [];
+    dbString = process.env.DATABASE
+    dbVars = []
     if dbString
-        dbVars = dbString.split(':');
+        dbVars = dbString.split(':')
     else
-        dbVars = ['localhost', 3306];
+        dbVars = ['localhost', 3306]
 
     connection = mysql.createConnection
         host: dbVars[0],
