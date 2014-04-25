@@ -185,29 +185,55 @@ exports.skillsDistribution = ( req, res, next ) ->
         promise = query distributionQuery
 
     promise.then( (wat) ->
-        results = {}
+        results = []
 
         if wat.length > 0
-            sums = {"totalSum":0}
-            wat.forEach ( row ) ->
-                results[row.Skill] = results[row.Skill] || {"Actions": {}}
-                results[row.Skill].Actions[row.Action] = { Count: row.Count }
-                sums[row.Skill] = sums[row.Skill] || 0
-                sums[row.Skill] += row.Count
-                sums.totalSum += row.Count
+            total = 0
+            sums = {}
+            skills = {}
 
-            for skill of results
-                for action of results[skill].Actions
-                    results[skill].Fraction = Math.floor( sums[skill] / sums.totalSum * 100 ) / 100
-                    results[skill].Actions[action].Fraction = Math.floor( results[skill].Actions[action].Count / sums[skill] * 100 ) / 100
+            getSkill = (name) ->
+                return skills[name] ||= {
+                    name: name
+                    count: 0
+                    fraction: 0
+                    # Competitive
+                    rank: 0 # FIXME
+                    contribution: 0 # FIXME
+                    # Collaborative
+                    contributors:
+                        num: 0 # FIXME
+                        max: 0 # FIXME
+                    types: {}
+                    fractions: {}
+                }
 
-        console.log "woop", results
+            for row in wat
+                name = row.Skill
+                action = row.Action
+                skill = getSkill name
+                skill.types[action] = row.Count
+                sums[name] = sums[name] || 0
+                sums[name] += row.Count
+                total += row.Count
+
+            for name, data of skills
+                sum = sums[name]
+                data.count = sum
+                data.fraction = Math.floor( (sum / total) * 100 ) / 100
+                for action, count of data.types
+                    data.fractions[action] = Math.floor( (count / sum) * 100 ) / 100
+
+            results = (skill for name,skill of skills)
+
+
+        console.log "Skill distribution success!\n", results
         res.send 200, results
         return results
 
     )
     .fail( (whoops) ->
-        console.error "arse", whoops
+        console.error "Skill distribution fail!\n", whoops
         res.send 500, "Shit broke: " + whoops
     )
     .finally(next)
