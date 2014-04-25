@@ -246,9 +246,12 @@ exports.skillsCounts = ( req, res, next ) ->
         SELECT
             skills.Name as Skill, COUNT(activities.Key) as Count
         FROM
-            activities, skills, actions
-        WHERE
-            actions.actionType = 3 AND actions.ID = activities.Action AND skills.ID = activities.Skill"
+            activities
+        JOIN actions ON actions.actionType = 3 AND actions.ID = activities.Action
+        JOIN skills ON skills.ID = activities.Skill"
+    if req.params.user
+        countsQuery += " JOIN users ON users.ID = " + connection.escape req.params.user + ' AND users.ID = activities.ID'
+    countsQuery += " WHERE 1=1"
     if req.params.dateFrom
         countsQuery += " AND activities.Date >= " + connection.escape req.params.dateFrom
     if req.params.dateTo
