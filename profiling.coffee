@@ -208,9 +208,7 @@ exports.skillsDistribution = ( req, res, next ) ->
                     rank: 0 # FIXME
                     contribution: 0 # FIXME
                     # Collaborative
-                    contributors:
-                        num: 0 # FIXME
-                        max: 0 # FIXME
+                    contributors: 0
                     types: {}
                     fractions: {}
                 }
@@ -241,6 +239,74 @@ exports.skillsDistribution = ( req, res, next ) ->
     )
     .fail( (whoops) ->
         console.error "Skill distribution fail!\n", whoops
+        res.send 500, "Shit broke: " + whoops
+    )
+    .finally(next)
+    .done()
+
+exports.skillsContribution = ( req, res, next ) ->
+    return unless reqParam( req, next, 'user' )
+    distributionQuery = "
+        SELECT
+            skills.Name as Skill, COUNT(*) as Count, activities.User
+        FROM
+            activities
+        JOIN actions ON
+            actions.actionType = 3 AND activities.Action = actions.ID
+        JOIN skills ON
+            activities.Skill = skills.ID
+        GROUP BY
+            activities.Skill, activities.User
+        ORDER BY Skill, Count DESC"
+
+    user_id = null
+    Q( getCacheUser req.params.user )
+    .then( ( userID ) ->
+        return next new restify.InvalidArgumentError "Unknown user '#{req.params.user}'" unless userID
+        user_id = userID
+        query distributionQuery, [ userID ]
+    ).then( (wat) ->
+        results = {}
+        contributors = {}
+        rank = 1
+        previousSkill = ''
+
+        if wat.length > 0 && user_id
+            for row in wat
+                if row.Skill != previousSkill
+                    rank = 1
+                previousSkill = row.Skill
+
+                contributors[row.Skill] = contributors[row.Skill] || 0
+                contributors[row.Skill]++
+
+                if row.User == user_id
+                    results[row.Skill] =
+                        rank: rank
+                        contribution: row.Count
+                        contributors: 1
+
+                    rank = 1
+                else
+                    rank++
+
+            for skill, num of contributors
+                if results.hasOwnProperty skill
+                    results[skill].contributors = num
+                else
+                    results[skill] =
+                        "rank": num + 1
+                        "contribution": 0
+                        "contributors": num
+
+
+        console.log "Skill contributions success!\n", results
+        res.send 200, results
+        return results
+
+    )
+    .fail( (whoops) ->
+        console.error "Skill contributions fail!\n", whoops
         res.send 500, "Shit broke: " + whoops
     )
     .finally(next)
