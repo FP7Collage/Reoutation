@@ -26,6 +26,7 @@ connect = () ->
             throw e;
         connect()
 
+connect()
 
 query = ( txt, args = [] ) ->
     console.log "Query!", txt, args, connection?
