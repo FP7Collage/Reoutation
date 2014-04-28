@@ -257,12 +257,12 @@ exports.skillsCounts = ( req, res, next ) ->
         JOIN actions ON actions.actionType = 3 AND actions.ID = activities.Action
         JOIN skills ON skills.ID = activities.Skill"
     if req.params.user
-        countsQuery += " JOIN users ON users.ID = " + connection.escape req.params.user + ' AND users.ID = activities.ID'
+        countsQuery += " JOIN users ON users.UUID = " + connection.escape(req.params.user) + " AND users.ID = activities.User"
     countsQuery += " WHERE 1=1"
     if req.params.dateFrom
-        countsQuery += " AND activities.Date >= " + connection.escape req.params.dateFrom
+        countsQuery += " AND activities.Date >= " + connection.escape(req.params.dateFrom)
     if req.params.dateTo
-        countsQuery += " AND activities.Date <= " + connection.escape req.params.dateTo
+        countsQuery += " AND activities.Date <= " + connection.escape(req.params.dateTo)
     countsQuery += " GROUP BY
             activities.Skill ORDER BY Count DESC, activities.Skill ASC"
 
