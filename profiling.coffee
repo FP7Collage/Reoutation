@@ -6,6 +6,7 @@ restify = require 'restify'
 connection = null
 
 connect = () ->
+    console.log 'Connecting to DB'
     dbString = process.env.DATABASE
     dbVars = []
     if dbString
@@ -28,7 +29,6 @@ connect = () ->
 
 query = ( txt, args = [] ) ->
     console.log "Query!", txt, args, connection?
-    connect() unless connection?
     Q.ninvoke( connection, 'query', txt, args ).then (res) -> res[0]
 
 cache =
