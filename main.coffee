@@ -34,6 +34,7 @@ server.post '/users', profiling.addUser
 server.post '/activities/perform', profiling.performActivity
 server.get '/skills/distribution', profiling.skillsDistribution
 server.get '/skills/contribution', profiling.skillsContribution
+server.get '/skills/userNumber', profiling.userNumber
 server.get '/skills/counts', profiling.skillsCounts
 server.get '/skills/recommend', profiling.recommendSkills
 server.get '/actions/recommend', profiling.recommendActions

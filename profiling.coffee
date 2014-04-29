@@ -267,7 +267,6 @@ exports.skillsContribution = ( req, res, next ) ->
         query distributionQuery, [ userID ]
     ).then( (wat) ->
         results = {}
-        contributors = {}
         rank = 1
         previousSkill = ''
 
@@ -277,27 +276,13 @@ exports.skillsContribution = ( req, res, next ) ->
                     rank = 1
                 previousSkill = row.Skill
 
-                contributors[row.Skill] = contributors[row.Skill] || 0
-                contributors[row.Skill]++
-
                 if row.User == user_id
                     results[row.Skill] =
                         rank: rank
                         contribution: row.Count
-                        contributors: 1
-
                     rank = 1
                 else
                     rank++
-
-            for skill, num of contributors
-                if results.hasOwnProperty skill
-                    results[skill].contributors = num
-                else
-                    results[skill] =
-                        "rank": num + 1
-                        "contribution": 0
-                        "contributors": num
 
 
         console.log "Skill contributions success!\n", results
@@ -307,6 +292,38 @@ exports.skillsContribution = ( req, res, next ) ->
     )
     .fail( (whoops) ->
         console.error "Skill contributions fail!\n", whoops
+        res.send 500, "Shit broke: " + whoops
+    )
+    .finally(next)
+    .done()
+
+exports.userNumber = ( req, res, next ) ->
+    userNumberQuery = "
+        SELECT
+            skills.Name as Skill, COUNT(DISTINCT activities.User) as Count
+        FROM
+            activities
+        JOIN actions ON
+            actions.actionType = 3 AND activities.Action = actions.ID
+        JOIN skills ON
+            activities.Skill = skills.ID
+        GROUP BY
+            activities.Skill"
+
+    Q( query userNumberQuery )
+    .then( (wat) ->
+        result = {}
+        if wat.length > 0
+            for row in wat
+                result[row.Skill] = row.Count
+
+        console.log "Skill user number success!\n", result
+        res.send 200, result
+        return result
+
+    )
+    .fail( (whoops) ->
+        console.error "Skill user number fail!\n", whoops
         res.send 500, "Shit broke: " + whoops
     )
     .finally(next)
