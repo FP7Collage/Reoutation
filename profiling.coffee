@@ -130,6 +130,35 @@ exports.addUser = ( req, res, next ) ->
     .finally(next)
     .done()
 
+exports.getUserRank = ( req, res, next ) ->
+    return unless reqParam( req, next, 'user' )
+    userRankQuery = "
+        SELECT
+            COUNT(*) as rank
+        FROM
+            (SELECT COUNT(*) as points, User FROM activities GROUP BY User) ui,
+            (SELECT COUNT(*) as points, User FROM activities GROUP BY User) uo
+        WHERE
+            (ui.points, ui.User) >= (uo.points, uo.User) AND uo.User = ?"
+
+    Q( getCacheUser req.params.user )
+    .then( ( userID ) ->
+        return next new restify.InvalidArgumentError "Unknown user '#{req.params.user}'" unless userID
+        query userRankQuery, [ userID ]
+    )
+    .then( (wat) ->
+        if wat.length > 0
+            wat = wat[0]
+        console.log "woop", wat
+        res.send 200, wat
+    )
+    .fail( (whoops) ->
+        console.error "Get user rank failed", whoops
+        res.send 500, "Shit broke: " + whoops
+    )
+    .finally(next)
+    .done()
+
 # /api/activities/perform
 # json payload
 # {  }

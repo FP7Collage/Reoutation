@@ -31,6 +31,7 @@ server.get '/', (req, res, next) ->
     res.send 'Hello World'
     next()
 server.post '/users', profiling.addUser
+server.get '/users/:user/rank', profiling.getUserRank
 server.post '/activities/perform', profiling.performActivity
 server.get '/skills/distribution', profiling.skillsDistribution
 server.get '/skills/contribution', profiling.skillsContribution
