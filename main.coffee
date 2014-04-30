@@ -41,5 +41,8 @@ server.get '/skills/recommend', profiling.recommendSkills
 server.get '/actions/recommend', profiling.recommendActions
 server.get '/actionTypes/recommend', profiling.recommendActionTypes
 
+server.on 'uncaughtException', (req, res, route, err) ->
+    console.error 'Uncaught exception! %s', err.stack
+
 server.listen 7171, () ->
     console.log '%s listening at %s', server.name, server.url
