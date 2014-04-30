@@ -2,11 +2,12 @@
 mysql   = require 'mysql'
 Q       = require 'q'
 restify = require 'restify'
+logger  = require './logger'
 
 connection = null
 
 connect = () ->
-    console.log 'Connecting to DB'
+    logger.info 'Connecting to DB'
     dbString = process.env.DATABASE
     dbVars = []
     if dbString
@@ -23,13 +24,15 @@ connect = () ->
 
     connection.on "error", (e) ->
         if e.code != 'PROTOCOL_CONNECTION_LOST'
-            throw e;
+            logger.error 'Fatal database error! %s', e.code, e
+            throw e
+        logger.warn 'Lost connection to the database...'
         connect()
 
 connect()
 
 query = ( txt, args = [] ) ->
-    console.log "Query!", txt, args, connection?
+    logger.debug "Query!", txt, args, connection?
     Q.ninvoke( connection, 'query', txt, args ).then (res) -> res[0]
 
 cache =
@@ -40,29 +43,32 @@ cache =
 
 getCacheItem = ( key, name ) ->
     cacheItem = cache[ key ][ name ]
-    console.log "cache get", key, name
     if cacheItem != undefined
+        logger.silly 'Cache hit for %s["%s"]', key, name
         return Q( cacheItem )
+    logger.silly 'Cache miss for %s["%s"]', key, name
     query( 'SELECT `ID` FROM ?? WHERE `Name` = ?', [ key, name ] ).then (results) ->
-        console.log "Results!", results
+        logger.silly "Got item: %j", results
         cache[ key ][ name ] = results[0]?.ID || false
 
 getCacheAction = ( name ) ->
     cacheItem = cache[ 'actions' ][ name ]
-    console.log "cache get actions", name
     if cacheItem != undefined
+        logger.silly 'Cache hit for actions["%s"]', name
         return Q( cacheItem )
+    logger.silly 'Cache miss for actions["%s"]', name
     query( 'SELECT `Action` FROM actionMap WHERE `Name` = ?', [ name ] ).then (results) ->
-        console.log "Results!", results
+        logger.silly "Got action: %j", results
         cache[ 'actions' ][ name ] = results[0]?.Action || false
 
 getCacheUser = ( UUID ) ->
     cacheUser = cache[ 'users' ][ UUID ]
-    console.log "cache get", 'users', UUID
     if cacheUser != undefined
+        logger.silly 'Cache hit for users["%s"]', UUID
         return Q( cacheUser )
+    logger.silly 'Cache miss for users["%s"]', UUID
     query( 'SELECT `ID` FROM ?? WHERE `UUID` = ?', [ 'users', UUID ] ).then (results) ->
-        console.log "Results!", results
+        logger.silly "Got user: %j", results
         cache[ 'users' ][ UUID ] = results[0]?.ID || false
 
 reqParam = ( req, next, p ) ->
@@ -104,13 +110,13 @@ getRecommendations = ( req, res, next, queryString ) ->
                 else
                     return { Name: name, Done: 0, Referenced: 0, Probability: 0 }
 
-        console.log "woop", results
+        logger.debug 'Sending recommendations:\n%j', results
         res.send 200, results
         return results
 
     )
     .fail( (whoops) ->
-        console.error "arse", whoops
+        logger.error 'Couldn\'t get recommendations: %s', whoops
         res.send 500, "Shit broke: " + whoops
     )
     .finally(next)
@@ -118,13 +124,14 @@ getRecommendations = ( req, res, next, queryString ) ->
 
 exports.addUser = ( req, res, next ) ->
     return unless reqParam( req, next, 'id' )
+    logger.verbose 'Adding user %s', req.params.id
     query("INSERT INTO `users` SET ?", { UUID: req.params.id })
     .then( (wat) ->
-        console.log "woop", wat
+        logger.debug 'Added user'
         res.send 204
     )
     .fail( (whoops) ->
-        console.error "arse", whoops
+        logger.error 'Could not add user: %s', whoops
         res.send 500, "Shit broke: " + whoops
     )
     .finally(next)
@@ -132,6 +139,7 @@ exports.addUser = ( req, res, next ) ->
 
 exports.getUserRank = ( req, res, next ) ->
     return unless reqParam( req, next, 'user' )
+    logger.verbose 'User Rank Reqest for %s', req.params.user
     userRankQuery = "
         SELECT
             COUNT(*) as rank
@@ -149,11 +157,11 @@ exports.getUserRank = ( req, res, next ) ->
     .then( (wat) ->
         if wat.length > 0
             wat = wat[0]
-        console.log "woop", wat
+        logger.debug 'Sending user ranks:\n%j', wat
         res.send 200, wat
     )
     .fail( (whoops) ->
-        console.error "Get user rank failed", whoops
+        logger.error 'Get user rank failed', whoops
         res.send 500, "Shit broke: " + whoops
     )
     .finally(next)
@@ -163,9 +171,9 @@ exports.getUserRank = ( req, res, next ) ->
 # json payload
 # {  }
 exports.performActivity = ( req, res, next ) ->
-    console.log "got call!"
-
     return unless reqParam( req, next, 'type' ) and reqParam( req, next, 'target' ) and reqParam( req, next, 'activator' )
+
+    logger.verbose 'Activity performed: %s in %s by %s', req.params.type, req.params.target, req.params.activator
 
     butts = for skill in req.params.target.tags
         Q.all([
@@ -186,11 +194,12 @@ exports.performActivity = ( req, res, next ) ->
         )
     Q.all(butts)
     .then( (wat) ->
+        logger.debug 'Activity inserted'
         console.log "woop", wat
         res.send 204
     )
     .fail( (whoops) ->
-        console.error "arse", whoops
+        logger.error 'Could not insert activity: %s', whoops
         res.send 500, "Shit broke: " + whoops
     )
     .finally(next)
@@ -212,12 +221,14 @@ exports.skillsDistribution = ( req, res, next ) ->
             activities.Skill, activities.Action"
 
     if req.params.user
+        logger.verbose 'Skill distribution query for %s', req.params.user
         promise = Q( getCacheUser req.params.user )
             .then( ( userID ) ->
                 return next new restify.InvalidArgumentError "Unknown user '#{req.params.user}'" unless userID
                 query distributionQuery, [ userID ]
             )
     else
+        logger.verbose 'Skill distribution query for everyone'
         promise = query distributionQuery
 
     promise.then( (wat) ->
@@ -261,13 +272,13 @@ exports.skillsDistribution = ( req, res, next ) ->
             results = (skill for name,skill of skills)
 
 
-        console.log "Skill distribution success!\n", results
+        logger.debug 'Sending skill distribution:\n%j', results
         res.send 200, results
         return results
 
     )
     .fail( (whoops) ->
-        console.error "Skill distribution fail!\n", whoops
+        logger.error 'Couldn\'t get skill distribution: %s', whoops
         res.send 500, "Shit broke: " + whoops
     )
     .finally(next)
@@ -275,6 +286,7 @@ exports.skillsDistribution = ( req, res, next ) ->
 
 exports.skillsContribution = ( req, res, next ) ->
     return unless reqParam( req, next, 'user' )
+    logger.verbose 'Skills contribution request for %s', req.params.user
     distributionQuery = "
         SELECT
             skills.Name as Skill, COUNT(*) as Count, activities.User
@@ -313,20 +325,20 @@ exports.skillsContribution = ( req, res, next ) ->
                 else
                     rank++
 
-
-        console.log "Skill contributions success!\n", results
+        logger.debug 'Sending skill contributions:\n%j', results
         res.send 200, results
         return results
 
     )
     .fail( (whoops) ->
-        console.error "Skill contributions fail!\n", whoops
+        logger.error 'Couldn\'t get skill contributions: %s', whoops
         res.send 500, "Shit broke: " + whoops
     )
     .finally(next)
     .done()
 
 exports.userNumber = ( req, res, next ) ->
+    logger.verbose 'User Number Request'
     userNumberQuery = "
         SELECT
             skills.Name as Skill, COUNT(DISTINCT activities.User) as Count
@@ -346,13 +358,13 @@ exports.userNumber = ( req, res, next ) ->
             for row in wat
                 result[row.Skill] = row.Count
 
-        console.log "Skill user number success!\n", result
+        logger.debug 'Sending skill user number:\n%j', result
         res.send 200, result
         return result
 
     )
     .fail( (whoops) ->
-        console.error "Skill user number fail!\n", whoops
+        logger.error 'Couldn\'t get user number: %s', whoops
         res.send 500, "Shit broke: " + whoops
     )
     .finally(next)
@@ -360,6 +372,7 @@ exports.userNumber = ( req, res, next ) ->
 
 exports.skillsCounts = ( req, res, next ) ->
     console.log req.params
+    # Why is this here but no where else?
     connect() unless connection?
     countsQuery = "
         SELECT
@@ -378,25 +391,28 @@ exports.skillsCounts = ( req, res, next ) ->
     countsQuery += " GROUP BY
             activities.Skill ORDER BY Count DESC, activities.Skill ASC"
 
+    console.verbose 'Skills Counts Requests: %s, %s, %s', req.params.user, req.params.dateFrom, req.params.dateTo
+
     query( countsQuery )
     .then( (wat) ->
         results = {}
         wat.forEach ( oneWat ) ->
             results[oneWat.Skill] = oneWat.Count
 
-        console.log "woop", results
+        console.debug 'Sending skills counts:\n%j', results
         res.send 200, results
         return results
 
     )
     .fail( (whoops) ->
-        console.error "arse", whoops
+        logger.error 'Couldn\'t get skills count: %s', whoops
         res.send 500, "Shit broke: " + whoops
     )
     .finally(next)
     .done()
 
 exports.recommendSkills = ( req, res, next ) ->
+    logger.verbose 'Skill Recommendations Reqest for %s in %j', req.params.user, req.params.names
     statisticsQuery = "
         SELECT skills.Name, b1.Done, b2.Referenced FROM
             (
@@ -427,6 +443,7 @@ exports.recommendSkills = ( req, res, next ) ->
     getRecommendations req, res, next, statisticsQuery
 
 exports.recommendActions = ( req, res, next ) ->
+    logger.verbose 'Action Recommendations Reqest for %s in %j', req.params.user, req.params.names
     statisticsQuery = "
         SELECT actions.Name, b1.Done, b2.Referenced FROM
             (
@@ -457,6 +474,7 @@ exports.recommendActions = ( req, res, next ) ->
     getRecommendations req, res, next, statisticsQuery
 
 exports.recommendActionTypes = ( req, res, next ) ->
+    logger.verbose 'ActionType Recommendations Reqest for %s in %j', req.params.user, req.params.names
     statisticsQuery = "
         SELECT actionTypes.Name, SUM(b1.Done) as Done, SUM(b2.Referenced) as Referenced FROM
             (

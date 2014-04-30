@@ -1,6 +1,7 @@
 restify   = require 'restify'
 profiling = require './profiling'
-argv = require('yargs').demand(['reputations', 'gaminomics']).argv
+argv      = require('yargs').demand(['reputations', 'gaminomics']).argv
+logger    = require './logger'
 
 
 # connect to gaminomics
@@ -16,15 +17,27 @@ jsonClient.post '/listeners', {
     "id": "reputationEvents",
     "type": "Event",
     "callback": argv.reputations + "/activities/perform"
-}, (err, req, res, obj) -> console.log 'Register listener:', err, res.body, obj
+}, (err, req, res, obj) ->
+    if err
+        logger.error 'Could not regigister \'Event\' listener on Gaminomics!', err
+        # FIXME: Should this be a fatal error?
+    else
+        logger.verbose 'Registered \'Event\' listener on Gaminomics!'
 
 jsonClient.post '/listeners', {
     "id": "reputationUsers",
     "type": "UserCreate",
     "callback": argv.reputations + "/users"
-}, (err, req, res, obj) -> console.log 'Register listener:', err, res.body, obj
+}, (err, req, res, obj) ->
+    if err
+        logger.error 'Could not regigister \'UserCreate\' listener on Gaminomics!', err
+        # FIXME: Should this be a fatal error?
+    else
+        logger.verbose 'Registered \'UserCreate\' listener on Gaminomics!'
 
-server = restify.createServer()
+server = restify.createServer({
+    name: 'Reputation Service'
+})
 server.use restify.queryParser()
 server.use restify.bodyParser()
 server.get '/', (req, res, next) ->
@@ -42,7 +55,7 @@ server.get '/actions/recommend', profiling.recommendActions
 server.get '/actionTypes/recommend', profiling.recommendActionTypes
 
 server.on 'uncaughtException', (req, res, route, err) ->
-    console.error 'Uncaught exception! %s', err.stack
+    logger.error 'Uncaught exception! %s', err.stack
 
 server.listen 7171, () ->
-    console.log '%s listening at %s', server.name, server.url
+    logger.info '%s listening at %s', server.name, server.url
