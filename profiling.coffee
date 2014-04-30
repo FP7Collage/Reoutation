@@ -181,7 +181,7 @@ exports.performActivity = ( req, res, next ) ->
             getCacheItem 'skills', skill
             getCacheUser req.params.activator.id
         ]).spread( ( actionID, skillID, userID ) ->
-            console.log "Got IDs", arguments
+            logger.silly "Got IDs: %j", arguments
             return next new restify.InvalidArgumentError "Unknown action type '#{req.params.type}'" unless actionID
             return next new restify.InvalidArgumentError "Unknown target '#{skill}'" unless skillID
             return next new restify.InvalidArgumentError "Unknown user '#{req.params.activator}'" unless userID
@@ -195,7 +195,6 @@ exports.performActivity = ( req, res, next ) ->
     Q.all(butts)
     .then( (wat) ->
         logger.debug 'Activity inserted'
-        console.log "woop", wat
         res.send 204
     )
     .fail( (whoops) ->
@@ -391,7 +390,7 @@ exports.skillsCounts = ( req, res, next ) ->
     countsQuery += " GROUP BY
             activities.Skill ORDER BY Count DESC, activities.Skill ASC"
 
-    console.verbose 'Skills Counts Requests: %s, %s, %s', req.params.user, req.params.dateFrom, req.params.dateTo
+    logger.verbose 'Skills Counts Requests: %s, %s, %s', req.params.user, req.params.dateFrom, req.params.dateTo
 
     query( countsQuery )
     .then( (wat) ->
@@ -399,7 +398,7 @@ exports.skillsCounts = ( req, res, next ) ->
         wat.forEach ( oneWat ) ->
             results[oneWat.Skill] = oneWat.Count
 
-        console.debug 'Sending skills counts:\n%j', results
+        logger.debug 'Sending skills counts:\n%j\n', results
         res.send 200, results
         return results
 
