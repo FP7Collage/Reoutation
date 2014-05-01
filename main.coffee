@@ -57,6 +57,7 @@ server.get '/actionTypes/recommend', profiling.recommendActionTypes
 
 server.on 'uncaughtException', (req, res, route, err) ->
     logger.error 'Uncaught exception! %s', err.stack
+    res.send err
 
 server.listen 7171, () ->
     logger.info '%s listening at %s', server.name, server.url

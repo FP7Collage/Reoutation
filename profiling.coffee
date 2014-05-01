@@ -177,7 +177,7 @@ exports.performActivity = ( req, res, next ) ->
 
     butts = for skill in req.params.target.tags
         Q.all([
-            getCacheAction req.params.type
+            getCacheAction req.params.target.type
             getCacheItem 'skills', skill
             getCacheUser req.params.activator.id
         ]).spread( ( actionID, skillID, userID ) ->
