@@ -45,6 +45,7 @@ server.get '/', (req, res, next) ->
     next()
 server.post '/users', profiling.addUser
 server.get '/users/:user/rank', profiling.getUserRank
+server.get '/users/contributionStatistics', profiling.getContributionStatistics
 server.post '/activities/perform', profiling.performActivity
 server.get '/skills/distribution', profiling.skillsDistribution
 server.get '/skills/contribution', profiling.skillsContribution

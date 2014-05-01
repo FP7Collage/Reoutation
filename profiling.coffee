@@ -410,6 +410,83 @@ exports.skillsCounts = ( req, res, next ) ->
     .finally(next)
     .done()
 
+exports.getContributionStatistics = ( req, res, next ) ->
+    connect() unless connection?
+    countsQuery = "
+        SELECT
+            skills.Name as Skill, COUNT(activities.Key) as Count, users.UUID
+        FROM
+            activities
+        JOIN actions ON actions.actionType = 3 AND actions.ID = activities.Action
+        JOIN skills ON skills.ID = activities.Skill
+        JOIN users ON users.ID = activities.User"
+    countsQuery += " WHERE 1=1"
+    if req.params.dateFrom
+        countsQuery += " AND activities.Date >= " + connection.escape(req.params.dateFrom)
+    if req.params.dateTo
+        countsQuery += " AND activities.Date <= " + connection.escape(req.params.dateTo)
+    countsQuery += " GROUP BY
+            activities.Skill, activities.User
+            ORDER BY activities.Skill ASC, Count DESC"
+
+    logger.verbose 'User contributions statistics Requests: %s, %s, %s', req.params.dateFrom, req.params.dateTo
+
+    query( countsQuery )
+    .then( (wat) ->
+        users = {}
+        totalContributions = {total:0, skills:{}}
+        contributors = {}
+        rank = 1
+        previousSkill = ''
+        rankings = []
+
+        if wat.length > 0
+            wat.forEach ( row ) ->
+                if row.Skill != previousSkill
+                    contributors[row.Skill] = 0
+                    rank = 1
+                previousSkill = row.Skill
+                users[row.UUID] = users[row.UUID] || { rank:0, contribution:0, contributionFraction:0, skills:{} }
+                users[row.UUID].contribution += row.Count
+
+                users[row.UUID].skills[row.Skill] = { skill:row.Skill, rank: rank, contribution:row.Count, contributionFraction:0 }
+
+                totalContributions.total += row.Count
+                totalContributions.skills[row.Skill] = ( totalContributions.skills[row.Skill] || 0 ) + row.Count
+                contributors[row.Skill]++
+                rank++
+
+            for UUID, user of users
+                rankings.push { user:UUID, contribution:user.contribution }
+                user.contributionFraction = Math.floor( ( user.contribution / totalContributions.total ) * 100 ) / 100
+                for skillName, skill of user.skills
+                    skill.contributors = contributors[skillName]
+                    skill.contributionFraction = Math.floor( ( skill.contribution / totalContributions.skills[skillName] ) * 100 ) / 100
+
+            rankings.sort (a, b) ->
+                if a.contribution < b.contribution
+                    return 1
+                else if a.contribution > b.contribution
+                    return -1
+                return 0
+
+
+            for rankObj, rank in rankings
+                users[rankObj.user].rank = rank+1
+
+
+        logger.debug 'Sending users contribution statistics:\n%j', users
+        res.send 200, users
+        return users
+
+    )
+    .fail( (whoops) ->
+        logger.error 'Couldn\'t get contribution statistics: %s', whoops
+        res.send 500, "Shit broke: " + whoops
+    )
+    .finally(next)
+    .done()
+
 exports.recommendSkills = ( req, res, next ) ->
     logger.verbose 'Skill Recommendations Reqest for %s in %j', req.params.user, req.params.names
     statisticsQuery = "
