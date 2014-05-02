@@ -16,6 +16,7 @@ USE `reputation`;
 
 
 -- Dumping structure for table reputation.actionMap
+DROP TABLE IF EXISTS `actionMap`;
 CREATE TABLE IF NOT EXISTS `actionMap` (
   `ID` int(11) unsigned NOT NULL AUTO_INCREMENT,
   `Action` int(11) unsigned NOT NULL,
@@ -24,15 +25,20 @@ CREATE TABLE IF NOT EXISTS `actionMap` (
   UNIQUE KEY `Name` (`Name`),
   KEY `FK__actions_map` (`Action`),
   CONSTRAINT `FK__actions_map` FOREIGN KEY (`Action`) REFERENCES `actions` (`ID`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 -- Dumping data for table reputation.actionMap: ~3 rows (approximately)
 /*!40000 ALTER TABLE `actionMap` DISABLE KEYS */;
 INSERT INTO `actionMap` (`ID`, `Action`, `Name`) VALUES
-	(1, 5, 'create_post'),
-	(2, 1, 'play_audio'),
-	(3, 9, 'approve');
+	(1, 5, 'Text'),
+	(2, 6, 'Image'),
+	(3, 8, 'Video'),
+	(5, 7, 'Audio'),
+	(6, 14, 'Link');
 /*!40000 ALTER TABLE `actionMap` ENABLE KEYS */;
+/*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;
+/*!40014 SET FOREIGN_KEY_CHECKS=IF(@OLD_FOREIGN_KEY_CHECKS IS NULL, 1, @OLD_FOREIGN_KEY_CHECKS) */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 
 
 -- Dumping structure for table reputation.actions
