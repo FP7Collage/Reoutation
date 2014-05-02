@@ -187,9 +187,18 @@ exports.performActivity = ( req, res, next ) ->
             getCacheUser req.params.activator.id
         ]).spread( ( actionID, skillID, userID ) ->
             logger.silly "Got IDs: %j", arguments
-            return next new restify.InvalidArgumentError "Unknown action type '#{req.params.type}'" unless actionID
-            return next new restify.InvalidArgumentError "Unknown target '#{skill}'" unless skillID
-            return next new restify.InvalidArgumentError "Unknown user '#{req.params.activator}'" unless userID
+            if not actionID
+                next new restify.InvalidArgumentError "Unknown action type '#{req.params.type}'"
+                abort = true
+                return
+            else if not skillID
+                next new restify.InvalidArgumentError "Unknown target '#{skill}'"
+                abort = true
+                return
+            else if not userID
+                next new restify.InvalidArgumentError "Unknown user '#{req.params.activator}'"
+                abort = true
+                return
             query "INSERT INTO `activities` SET ?", [{
                 User: userID
                 Action: actionID
@@ -199,6 +208,7 @@ exports.performActivity = ( req, res, next ) ->
         )
     Q.all(butts)
     .then( (wat) ->
+        return if abort
         logger.debug 'Activity inserted'
         res.send 204
     )
