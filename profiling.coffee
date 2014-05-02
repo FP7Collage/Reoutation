@@ -116,6 +116,7 @@ getRecommendations = ( req, res, next, queryString ) ->
 
     )
     .fail( (whoops) ->
+        whoops = whoops.toString()
         logger.error 'Couldn\'t get recommendations: %s', whoops
         res.send 500, "Shit broke: " + whoops
     )
@@ -131,6 +132,7 @@ exports.addUser = ( req, res, next ) ->
         res.send 204
     )
     .fail( (whoops) ->
+        whoops = whoops.toString()
         logger.error 'Could not add user: %s', whoops
         res.send 500, "Shit broke: " + whoops
     )
@@ -161,6 +163,7 @@ exports.getUserRank = ( req, res, next ) ->
         res.send 200, wat
     )
     .fail( (whoops) ->
+        whoops = whoops.toString()
         logger.error 'Get user rank failed', whoops
         res.send 500, "Shit broke: " + whoops
     )
@@ -174,6 +177,8 @@ exports.performActivity = ( req, res, next ) ->
     return unless reqParam( req, next, 'type' ) and reqParam( req, next, 'target' ) and reqParam( req, next, 'activator' )
 
     logger.verbose 'Activity performed: %s in %s by %s', req.params.type, req.params.target, req.params.activator
+
+    abort = false
 
     butts = for skill in req.params.target.tags
         Q.all([
@@ -198,6 +203,7 @@ exports.performActivity = ( req, res, next ) ->
         res.send 204
     )
     .fail( (whoops) ->
+        whoops = whoops.toString()
         logger.error 'Could not insert activity: %s', whoops
         res.send 500, "Shit broke: " + whoops
     )
@@ -277,6 +283,7 @@ exports.skillsDistribution = ( req, res, next ) ->
 
     )
     .fail( (whoops) ->
+        whoops = whoops.toString()
         logger.error 'Couldn\'t get skill distribution: %s', whoops
         res.send 500, "Shit broke: " + whoops
     )
@@ -330,6 +337,7 @@ exports.skillsContribution = ( req, res, next ) ->
 
     )
     .fail( (whoops) ->
+        whoops = whoops.toString()
         logger.error 'Couldn\'t get skill contributions: %s', whoops
         res.send 500, "Shit broke: " + whoops
     )
@@ -363,6 +371,7 @@ exports.userNumber = ( req, res, next ) ->
 
     )
     .fail( (whoops) ->
+        whoops = whoops.toString()
         logger.error 'Couldn\'t get user number: %s', whoops
         res.send 500, "Shit broke: " + whoops
     )
@@ -404,6 +413,7 @@ exports.skillsCounts = ( req, res, next ) ->
 
     )
     .fail( (whoops) ->
+        whoops = whoops.toString()
         logger.error 'Couldn\'t get skills count: %s', whoops
         res.send 500, "Shit broke: " + whoops
     )
@@ -481,6 +491,7 @@ exports.getContributionStatistics = ( req, res, next ) ->
 
     )
     .fail( (whoops) ->
+        whoops = whoops.toString()
         logger.error 'Couldn\'t get contribution statistics: %s', whoops
         res.send 500, "Shit broke: " + whoops
     )
