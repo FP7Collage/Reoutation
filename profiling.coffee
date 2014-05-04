@@ -91,6 +91,7 @@ getRecommendations = ( req, res, next, queryString ) ->
 
         if not wat instanceof Array
             return
+        req.params.names = req.params.names.map ( name ) -> decodeURIComponent( name )
 
         results = []
 
