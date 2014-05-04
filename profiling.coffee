@@ -450,6 +450,7 @@ exports.getContributionStatistics = ( req, res, next ) ->
             activities.Skill, activities.User
             ORDER BY activities.Skill ASC, Count DESC"
 
+    logger.verbose 'User ip: ', req.connection.remoteAddress
     logger.verbose 'User contributions statistics Requests: %s, %s, %s', req.params.dateFrom, req.params.dateTo
 
     query( countsQuery )
