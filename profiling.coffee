@@ -228,7 +228,7 @@ exports.skillsDistribution = ( req, res, next ) ->
         FROM
             activities
         JOIN actions ON
-            actions.actionType = 3 AND activities.Action = actions.ID
+            ( actions.actionType = 3 OR actions.ID = 14 ) AND activities.Action = actions.ID
         JOIN skills ON
             activities.Skill = skills.ID"
     if req.params.user
@@ -310,7 +310,7 @@ exports.skillsContribution = ( req, res, next ) ->
         FROM
             activities
         JOIN actions ON
-            actions.actionType = 3 AND activities.Action = actions.ID
+            ( actions.actionType = 3 OR actions.ID = 14 ) AND activities.Action = actions.ID
         JOIN skills ON
             activities.Skill = skills.ID
         GROUP BY
@@ -363,7 +363,7 @@ exports.userNumber = ( req, res, next ) ->
         FROM
             activities
         JOIN actions ON
-            actions.actionType = 3 AND activities.Action = actions.ID
+            ( actions.actionType = 3 OR actions.ID = 14 ) AND activities.Action = actions.ID
         JOIN skills ON
             activities.Skill = skills.ID
         GROUP BY
@@ -398,7 +398,7 @@ exports.skillsCounts = ( req, res, next ) ->
             skills.Name as Skill, COUNT(activities.Key) as Count
         FROM
             activities
-        JOIN actions ON actions.actionType = 3 AND actions.ID = activities.Action
+        JOIN actions ON ( actions.actionType = 3 OR actions.ID = 14 ) AND actions.ID = activities.Action
         JOIN skills ON skills.ID = activities.Skill"
     if req.params.user
         countsQuery += " JOIN users ON users.UUID = " + connection.escape(req.params.user) + " AND users.ID = activities.User"
@@ -438,7 +438,7 @@ exports.getContributionStatistics = ( req, res, next ) ->
             skills.Name as Skill, COUNT(activities.Key) as Count, users.UUID
         FROM
             activities
-        JOIN actions ON actions.actionType = 3 AND actions.ID = activities.Action
+        JOIN actions ON ( actions.actionType = 3 OR actions.ID = 14 ) AND actions.ID = activities.Action
         JOIN skills ON skills.ID = activities.Skill
         JOIN users ON users.ID = activities.User"
     countsQuery += " WHERE 1=1"
@@ -450,7 +450,6 @@ exports.getContributionStatistics = ( req, res, next ) ->
             activities.Skill, activities.User
             ORDER BY activities.Skill ASC, Count DESC"
 
-    logger.verbose 'User ip: ', req.connection.remoteAddress
     logger.verbose 'User contributions statistics Requests: %s, %s, %s', req.params.dateFrom, req.params.dateTo
 
     query( countsQuery )
