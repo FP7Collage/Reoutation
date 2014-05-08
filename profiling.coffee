@@ -221,6 +221,7 @@ exports.performActivity = ( req, res, next ) ->
     .finally(next)
     .done()
 
+# FIXME: actions.actionType = 3 OR actions.ID = 14 seems very specific to logquest, needs some redesign
 exports.skillsDistribution = ( req, res, next ) ->
     distributionQuery = "
         SELECT
