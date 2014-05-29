@@ -235,7 +235,7 @@ exports.skillsDistribution = ( req, res, next ) ->
     if req.params.user
         distributionQuery += " JOIN users ON activities.User = users.ID AND User = ?"
     distributionQuery += " GROUP BY
-            activities.Skill, activities.Action"
+            activities.Skill, activities.Action, activities.User"
 
     if req.params.user
         logger.verbose 'Skill distribution query for %s', req.params.user
@@ -274,10 +274,10 @@ exports.skillsDistribution = ( req, res, next ) ->
                 name = row.Skill
                 action = row.Action
                 skill = getSkill name
-                skill.types[action] = row.Count
-                sums[name] = sums[name] || 0
-                sums[name] += row.Count
+                skill.types[action] = (skill.types[action] || 0) + row.Count
+                sums[name] = (sums[name] || 0) + row.Count
                 total += row.Count
+                skill.contributors += 1
 
             for name, data of skills
                 sum = sums[name]
