@@ -15,24 +15,19 @@ connect = () ->
     else
         dbVars = ['localhost', 3306]
 
-    connection = mysql.createConnection
+    connection = mysql.createPool
         host: dbVars[0],
         port: dbVars[1],
         user: 'reputation',
         password: 'reputation',
-        database: 'reputation'
-
-    connection.on "error", (e) ->
-        if e.code != 'PROTOCOL_CONNECTION_LOST'
-            logger.error 'Fatal database error! %s', e.code, e
-            throw e
-        logger.warn 'Lost connection to the database...'
-        connect()
+        database: 'reputation',
+        connectionLimit: 10
 
 connect()
 
 query = ( txt, args = [] ) ->
     logger.debug "Query!", txt, args, connection?
+    connect() unless connection?
     Q.ninvoke( connection, 'query', txt, args ).then (res) -> res[0]
 
 cache =
