@@ -227,6 +227,8 @@ exports.skillsDistribution = ( req, res, next ) ->
             ( actions.actionType = 3 OR actions.ID = 14 ) AND activities.Action = actions.ID
         JOIN skills ON
             activities.Skill = skills.ID"
+    if req.params.skills and req.params.skills instanceof Array
+        distributionQuery += " AND skills.Name IN ('" + req.params.skills.join("','") + "')"
     if req.params.user
         distributionQuery += " JOIN users ON activities.User = users.ID AND User = ?"
     distributionQuery += " GROUP BY
