@@ -204,7 +204,15 @@ exports.performActivity = ( req, res, next ) ->
         )
     Q.all(butts)
     .then( (wat) ->
-        return if abort
+        if abort
+            query "INSERT INTO `allactivities` SET ?", [{
+                User: req.params.activator.id
+                Action: req.params.target.type
+                Skill: req.params.target.tags
+                Reference: req.params.target.id
+                Blob: JSON.stringify req.params
+                }]
+            return
         logger.debug 'Activity inserted'
         res.send 204
     )
