@@ -334,10 +334,10 @@ exports.skillsContribution = ( req, res, next ) ->
             activities
         JOIN actions ON
             ( actions.actionType = 3 OR actions.ID = 14 ) AND activities.Action = actions.ID
-        JOIN skills ON
+        RIGHT JOIN skills ON
             activities.Skill = skills.ID
         GROUP BY
-            activities.Skill, activities.User
+            skills.ID, activities.User
         ORDER BY Skill, Count DESC"
 
     user_id = null
@@ -353,9 +353,18 @@ exports.skillsContribution = ( req, res, next ) ->
 
         if wat.length > 0 && user_id
             for row in wat
-                if row.Skill != previousSkill
+                if ! row.User
+                    results[row.Skill] =
+                        rank: 0
+                        contribution: 0
+                    continue
+
+                if previousSkill && row.Skill != previousSkill
+                    if ! results[previousSkill]
+                        results[previousSkill] =
+                            rank: rank
+                            contribution: 0
                     rank = 1
-                previousSkill = row.Skill
 
                 if row.User == user_id
                     results[row.Skill] =
@@ -364,6 +373,13 @@ exports.skillsContribution = ( req, res, next ) ->
                     rank = 1
                 else
                     rank++
+
+                previousSkill = row.Skill
+
+            if ! results[previousSkill]
+                results[previousSkill] =
+                    rank: rank
+                    contribution: 0
 
         logger.debug 'Sending skill contributions:\n%j', results
         res.send 200, results
