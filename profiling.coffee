@@ -477,15 +477,15 @@ exports.getContributionStatistics = ( req, res, next ) ->
         FROM
             activities
         JOIN actions ON ( actions.actionType = 3 OR actions.ID = 14 ) AND actions.ID = activities.Action
-        JOIN skills ON skills.ID = activities.Skill
-        JOIN users ON users.ID = activities.User"
+        JOIN users ON users.ID = activities.User
+        RIGHT JOIN skills ON skills.ID = activities.Skill"
     countsQuery += " WHERE 1=1"
     if req.params.dateFrom
         countsQuery += " AND activities.Date >= " + connection.escape(req.params.dateFrom)
     if req.params.dateTo
         countsQuery += " AND activities.Date <= " + connection.escape(req.params.dateTo)
     countsQuery += " GROUP BY
-            activities.Skill, activities.User
+            skills.ID, activities.User
             ORDER BY activities.Skill ASC, Count DESC"
 
     logger.verbose 'User contributions statistics Requests: %s, %s, %s', req.params.dateFrom, req.params.dateTo
@@ -498,9 +498,12 @@ exports.getContributionStatistics = ( req, res, next ) ->
         rank = 1
         previousSkill = ''
         rankings = []
+        allSkills = {}
 
         if wat.length > 0
             wat.forEach ( row ) ->
+                allSkills[row.Skill] = row.Skill
+                if ! row.UUID then return
                 if row.Skill != previousSkill
                     contributors[row.Skill] = 0
                     rank = 1
@@ -518,9 +521,12 @@ exports.getContributionStatistics = ( req, res, next ) ->
             for UUID, user of users
                 rankings.push { user:UUID, contribution:user.contribution }
                 user.contributionFraction = Math.floor( ( user.contribution / totalContributions.total ) * 100 ) / 100
+                for skill, _ of allSkills
+                    if ! user.skills[skill]
+                         user.skills[skill] = { skill:skill, rank: 0, contribution:0, contributionFraction:0 }
                 for skillName, skill of user.skills
-                    skill.contributors = contributors[skillName]
-                    skill.contributionFraction = Math.floor( ( skill.contribution / totalContributions.skills[skillName] ) * 100 ) / 100
+                    skill.contributors = contributors[skillName] || 0
+                    skill.contributionFraction = ( Math.floor( ( skill.contribution / totalContributions.skills[skillName] ) * 100 ) / 100 ) || 0
 
             rankings.sort (a, b) ->
                 if a.contribution < b.contribution
