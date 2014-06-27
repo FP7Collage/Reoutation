@@ -249,14 +249,14 @@ exports.skillsDistribution = ( req, res, next ) ->
             activities
         JOIN actions ON
             ( actions.actionType = 3 OR actions.ID = 14 ) AND activities.Action = actions.ID
-        JOIN skills ON
+        RIGHT JOIN skills ON
             activities.Skill = skills.ID"
     if req.params.skills and req.params.skills instanceof Array
         distributionQuery += " AND skills.Name IN ('" + req.params.skills.join("','") + "')"
     if req.params.user
         distributionQuery += " JOIN users ON activities.User = users.ID AND User = ?"
     distributionQuery += " GROUP BY
-            activities.Skill, activities.Action, activities.User"
+            skills.ID, activities.Action, activities.User"
 
     if req.params.user
         logger.verbose 'Skill distribution query for %s', req.params.user
@@ -295,15 +295,16 @@ exports.skillsDistribution = ( req, res, next ) ->
                 name = row.Skill
                 action = row.Action
                 skill = getSkill name
-                skill.types[action] = (skill.types[action] || 0) + row.Count
-                sums[name] = (sums[name] || 0) + row.Count
-                total += row.Count
-                skill.contributors += 1
+                if action
+                    skill.types[action] = (skill.types[action] || 0) + row.Count
+                    sums[name] = (sums[name] || 0) + row.Count
+                    total += row.Count
+                    skill.contributors += 1
 
             for name, data of skills
                 sum = sums[name]
-                data.count = sum
-                data.fraction = Math.floor( (sum / total) * 100 ) / 100
+                data.count = sum if sum
+                data.fraction = ( Math.floor( (sum / total) * 100 ) / 100 ) || 0
                 for action, count of data.types
                     data.fractions[action] = Math.floor( (count / sum) * 100 ) / 100
 
@@ -333,10 +334,10 @@ exports.skillsContribution = ( req, res, next ) ->
             activities
         JOIN actions ON
             ( actions.actionType = 3 OR actions.ID = 14 ) AND activities.Action = actions.ID
-        JOIN skills ON
+        RIGHT JOIN skills ON
             activities.Skill = skills.ID
         GROUP BY
-            activities.Skill, activities.User
+            skills.ID, activities.User
         ORDER BY Skill, Count DESC"
 
     user_id = null
@@ -352,9 +353,18 @@ exports.skillsContribution = ( req, res, next ) ->
 
         if wat.length > 0 && user_id
             for row in wat
-                if row.Skill != previousSkill
+                if ! row.User
+                    results[row.Skill] =
+                        rank: 0
+                        contribution: 0
+                    continue
+
+                if previousSkill && row.Skill != previousSkill
+                    if ! results[previousSkill]
+                        results[previousSkill] =
+                            rank: rank
+                            contribution: 0
                     rank = 1
-                previousSkill = row.Skill
 
                 if row.User == user_id
                     results[row.Skill] =
@@ -363,6 +373,13 @@ exports.skillsContribution = ( req, res, next ) ->
                     rank = 1
                 else
                     rank++
+
+                previousSkill = row.Skill
+
+            if ! results[previousSkill]
+                results[previousSkill] =
+                    rank: rank
+                    contribution: 0
 
         logger.debug 'Sending skill contributions:\n%j', results
         res.send 200, results
@@ -386,10 +403,10 @@ exports.userNumber = ( req, res, next ) ->
             activities
         JOIN actions ON
             ( actions.actionType = 3 OR actions.ID = 14 ) AND activities.Action = actions.ID
-        JOIN skills ON
+        RIGHT JOIN skills ON
             activities.Skill = skills.ID
         GROUP BY
-            activities.Skill"
+            skills.ID"
 
     Q( query userNumberQuery )
     .then( (wat) ->
@@ -420,17 +437,16 @@ exports.skillsCounts = ( req, res, next ) ->
             skills.Name as Skill, COUNT(activities.Key) as Count
         FROM
             activities
-        JOIN actions ON ( actions.actionType = 3 OR actions.ID = 14 ) AND actions.ID = activities.Action
-        JOIN skills ON skills.ID = activities.Skill"
+        JOIN actions ON ( actions.actionType = 3 OR actions.ID = 14 ) AND actions.ID = activities.Action"
     if req.params.user
         countsQuery += " JOIN users ON users.UUID = " + connection.escape(req.params.user) + " AND users.ID = activities.User"
-    countsQuery += " WHERE 1=1"
+    countsQuery += " RIGHT JOIN skills ON skills.ID = activities.Skill WHERE 1=1"
     if req.params.dateFrom
         countsQuery += " AND activities.Date >= " + connection.escape(req.params.dateFrom)
     if req.params.dateTo
         countsQuery += " AND activities.Date <= " + connection.escape(req.params.dateTo)
     countsQuery += " GROUP BY
-            activities.Skill ORDER BY Count DESC, activities.Skill ASC"
+            skills.ID ORDER BY Count DESC, activities.Skill ASC"
 
     logger.verbose 'Skills Counts Requests: %s, %s, %s', req.params.user, req.params.dateFrom, req.params.dateTo
 
@@ -461,15 +477,15 @@ exports.getContributionStatistics = ( req, res, next ) ->
         FROM
             activities
         JOIN actions ON ( actions.actionType = 3 OR actions.ID = 14 ) AND actions.ID = activities.Action
-        JOIN skills ON skills.ID = activities.Skill
-        JOIN users ON users.ID = activities.User"
+        JOIN users ON users.ID = activities.User
+        RIGHT JOIN skills ON skills.ID = activities.Skill"
     countsQuery += " WHERE 1=1"
     if req.params.dateFrom
         countsQuery += " AND activities.Date >= " + connection.escape(req.params.dateFrom)
     if req.params.dateTo
         countsQuery += " AND activities.Date <= " + connection.escape(req.params.dateTo)
     countsQuery += " GROUP BY
-            activities.Skill, activities.User
+            skills.ID, activities.User
             ORDER BY activities.Skill ASC, Count DESC"
 
     logger.verbose 'User contributions statistics Requests: %s, %s, %s', req.params.dateFrom, req.params.dateTo
@@ -482,9 +498,12 @@ exports.getContributionStatistics = ( req, res, next ) ->
         rank = 1
         previousSkill = ''
         rankings = []
+        allSkills = {}
 
         if wat.length > 0
             wat.forEach ( row ) ->
+                allSkills[row.Skill] = row.Skill
+                if ! row.UUID then return
                 if row.Skill != previousSkill
                     contributors[row.Skill] = 0
                     rank = 1
@@ -502,9 +521,12 @@ exports.getContributionStatistics = ( req, res, next ) ->
             for UUID, user of users
                 rankings.push { user:UUID, contribution:user.contribution }
                 user.contributionFraction = Math.floor( ( user.contribution / totalContributions.total ) * 100 ) / 100
+                for skill, _ of allSkills
+                    if ! user.skills[skill]
+                         user.skills[skill] = { skill:skill, rank: 0, contribution:0, contributionFraction:0 }
                 for skillName, skill of user.skills
-                    skill.contributors = contributors[skillName]
-                    skill.contributionFraction = Math.floor( ( skill.contribution / totalContributions.skills[skillName] ) * 100 ) / 100
+                    skill.contributors = contributors[skillName] || 0
+                    skill.contributionFraction = ( Math.floor( ( skill.contribution / totalContributions.skills[skillName] ) * 100 ) / 100 ) || 0
 
             rankings.sort (a, b) ->
                 if a.contribution < b.contribution
