@@ -437,17 +437,16 @@ exports.skillsCounts = ( req, res, next ) ->
             skills.Name as Skill, COUNT(activities.Key) as Count
         FROM
             activities
-        JOIN actions ON ( actions.actionType = 3 OR actions.ID = 14 ) AND actions.ID = activities.Action
-        JOIN skills ON skills.ID = activities.Skill"
+        JOIN actions ON ( actions.actionType = 3 OR actions.ID = 14 ) AND actions.ID = activities.Action"
     if req.params.user
         countsQuery += " JOIN users ON users.UUID = " + connection.escape(req.params.user) + " AND users.ID = activities.User"
-    countsQuery += " WHERE 1=1"
+    countsQuery += " RIGHT JOIN skills ON skills.ID = activities.Skill WHERE 1=1"
     if req.params.dateFrom
         countsQuery += " AND activities.Date >= " + connection.escape(req.params.dateFrom)
     if req.params.dateTo
         countsQuery += " AND activities.Date <= " + connection.escape(req.params.dateTo)
     countsQuery += " GROUP BY
-            activities.Skill ORDER BY Count DESC, activities.Skill ASC"
+            skills.ID ORDER BY Count DESC, activities.Skill ASC"
 
     logger.verbose 'Skills Counts Requests: %s, %s, %s', req.params.user, req.params.dateFrom, req.params.dateTo
 
