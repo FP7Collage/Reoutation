@@ -249,14 +249,14 @@ exports.skillsDistribution = ( req, res, next ) ->
             activities
         JOIN actions ON
             ( actions.actionType = 3 OR actions.ID = 14 ) AND activities.Action = actions.ID
-        JOIN skills ON
+        RIGHT JOIN skills ON
             activities.Skill = skills.ID"
     if req.params.skills and req.params.skills instanceof Array
         distributionQuery += " AND skills.Name IN ('" + req.params.skills.join("','") + "')"
     if req.params.user
         distributionQuery += " JOIN users ON activities.User = users.ID AND User = ?"
     distributionQuery += " GROUP BY
-            activities.Skill, activities.Action, activities.User"
+            skills.ID, activities.Action, activities.User"
 
     if req.params.user
         logger.verbose 'Skill distribution query for %s', req.params.user
@@ -295,15 +295,16 @@ exports.skillsDistribution = ( req, res, next ) ->
                 name = row.Skill
                 action = row.Action
                 skill = getSkill name
-                skill.types[action] = (skill.types[action] || 0) + row.Count
-                sums[name] = (sums[name] || 0) + row.Count
-                total += row.Count
-                skill.contributors += 1
+                if action
+                    skill.types[action] = (skill.types[action] || 0) + row.Count
+                    sums[name] = (sums[name] || 0) + row.Count
+                    total += row.Count
+                    skill.contributors += 1
 
             for name, data of skills
                 sum = sums[name]
-                data.count = sum
-                data.fraction = Math.floor( (sum / total) * 100 ) / 100
+                data.count = sum if sum
+                data.fraction = ( Math.floor( (sum / total) * 100 ) / 100 ) || 0
                 for action, count of data.types
                     data.fractions[action] = Math.floor( (count / sum) * 100 ) / 100
 
