@@ -403,10 +403,10 @@ exports.userNumber = ( req, res, next ) ->
             activities
         JOIN actions ON
             ( actions.actionType = 3 OR actions.ID = 14 ) AND activities.Action = actions.ID
-        JOIN skills ON
+        RIGHT JOIN skills ON
             activities.Skill = skills.ID
         GROUP BY
-            activities.Skill"
+            skills.ID"
 
     Q( query userNumberQuery )
     .then( (wat) ->
