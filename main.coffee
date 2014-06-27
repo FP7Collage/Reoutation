@@ -47,6 +47,7 @@ server.post '/users', profiling.addUser
 server.get '/users/:user/rank', profiling.getUserRank
 server.get '/users/contributionStatistics', profiling.getContributionStatistics
 server.post '/activities/perform', profiling.performActivity
+server.post '/skills/add', profiling.addSkill
 server.get '/skills/distribution', profiling.skillsDistribution
 server.get '/skills/contribution', profiling.skillsContribution
 server.get '/skills/userNumber', profiling.userNumber

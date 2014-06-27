@@ -135,6 +135,22 @@ exports.addUser = ( req, res, next ) ->
     .finally(next)
     .done()
 
+exports.addSkill = ( req, res, next ) ->
+    return unless reqParam( req, next, 'name' )
+    logger.verbose 'Adding user %s', req.params.name
+    query("INSERT INTO `skills` SET ?", { Name: req.params.name })
+    .then( (wat) ->
+        logger.debug 'Added skill'
+        res.send 204
+    )
+    .fail( (whoops) ->
+        whoops = whoops.toString()
+        logger.error 'Could not add skill: %s', whoops
+        res.send 500, "Shit broke: " + whoops
+    )
+    .finally(next)
+    .done()
+
 exports.getUserRank = ( req, res, next ) ->
     return unless reqParam( req, next, 'user' )
     logger.verbose 'User Rank Reqest for %s', req.params.user
