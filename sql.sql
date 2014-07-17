@@ -15,30 +15,6 @@ CREATE DATABASE IF NOT EXISTS `reputation` /*!40100 DEFAULT CHARACTER SET utf8 C
 USE `reputation`;
 
 
--- Dumping structure for table reputation.actionMap
-DROP TABLE IF EXISTS `actionMap`;
-CREATE TABLE IF NOT EXISTS `actionMap` (
-  `ID` int(11) unsigned NOT NULL AUTO_INCREMENT,
-  `Action` int(11) unsigned NOT NULL,
-  `Name` varchar(100) COLLATE utf8_unicode_ci DEFAULT NULL,
-  PRIMARY KEY (`ID`),
-  UNIQUE KEY `Name` (`Name`),
-  KEY `FK__actions_map` (`Action`),
-  CONSTRAINT `FK__actions_map` FOREIGN KEY (`Action`) REFERENCES `actions` (`ID`)
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
-
--- Dumping data for table reputation.actionMap: ~3 rows (approximately)
-/*!40000 ALTER TABLE `actionMap` DISABLE KEYS */;
-INSERT INTO `actionMap` (`ID`, `Action`, `Name`) VALUES
-	(1, 5, 'Text'),
-	(2, 6, 'Image'),
-	(3, 8, 'Video'),
-	(5, 7, 'Audio'),
-	(6, 14, 'Link');
-/*!40000 ALTER TABLE `actionMap` ENABLE KEYS */;
-/*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;
-/*!40014 SET FOREIGN_KEY_CHECKS=IF(@OLD_FOREIGN_KEY_CHECKS IS NULL, 1, @OLD_FOREIGN_KEY_CHECKS) */;
-/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 
 
 -- Dumping structure for table reputation.actions
@@ -93,40 +69,32 @@ INSERT INTO `actionTypes` (`ID`, `Name`) VALUES
 /*!40000 ALTER TABLE `actionTypes` ENABLE KEYS */;
 
 
--- Dumping structure for table reputation.activities
-CREATE TABLE IF NOT EXISTS `activities` (
-  `Key` int(11) unsigned NOT NULL AUTO_INCREMENT,
-  `User` int(11) unsigned NOT NULL,
+-- Dumping structure for table reputation.actionMap
+DROP TABLE IF EXISTS `actionMap`;
+CREATE TABLE IF NOT EXISTS `actionMap` (
+  `ID` int(11) unsigned NOT NULL AUTO_INCREMENT,
   `Action` int(11) unsigned NOT NULL,
-  `Skill` int(11) unsigned NOT NULL,
-  `Reference` varchar(50) COLLATE utf8_unicode_ci DEFAULT NULL,
-  `Date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`Key`),
-  KEY `Actions` (`Action`),
-  KEY `User` (`User`),
-  KEY `Tags` (`Skill`),
-  CONSTRAINT `Skills to activities` FOREIGN KEY (`Skill`) REFERENCES `skills` (`ID`),
-  CONSTRAINT `Actions to activities` FOREIGN KEY (`Action`) REFERENCES `actions` (`ID`),
-  CONSTRAINT `Users to activities` FOREIGN KEY (`User`) REFERENCES `users` (`ID`)
-) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+  `Name` varchar(100) COLLATE utf8_unicode_ci DEFAULT NULL,
+  PRIMARY KEY (`ID`),
+  UNIQUE KEY `Name` (`Name`),
+  KEY `FK__actions_map` (`Action`),
+  CONSTRAINT `FK__actions_map` FOREIGN KEY (`Action`) REFERENCES `actions` (`ID`)
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
--- Dumping data for table reputation.activities: ~13 rows (approximately)
-/*!40000 ALTER TABLE `activities` DISABLE KEYS */;
-INSERT INTO `activities` (`Key`, `User`, `Action`, `Skill`, `Reference`, `Date`) VALUES
-	(1, 1, 8, 1, 'p1', '2014-02-04 11:16:52'),
-	(2, 1, 5, 1, 'p2', '2014-02-04 11:17:35'),
-	(3, 1, 9, 3, 'p3', '2012-02-07 14:56:04'),
-	(4, 1, 4, 5, 'p4', '2014-02-07 15:35:23'),
-	(5, 1, 5, 5, 'p5', '2014-02-10 11:12:00'),
-	(6, 1, 6, 5, 'p6', '2014-02-10 11:12:07'),
-	(7, 1, 7, 5, 'p7', '2014-02-10 11:33:52'),
-	(8, 2, 9, 5, 'p1', '2014-02-10 11:33:52'),
-	(9, 3, 9, 5, 'p1', '2014-02-10 11:33:52'),
-	(10, 3, 9, 5, 'p7', '2014-02-10 11:33:52'),
-	(11, 3, 9, 5, 'p9', '2014-02-10 11:33:52'),
-	(13, 2, 8, 1, 'p10', '2014-02-13 11:38:56'),
-	(14, 2, 8, 1, 'p10', '2014-02-13 11:38:56');
-/*!40000 ALTER TABLE `activities` ENABLE KEYS */;
+-- Dumping data for table reputation.actionMap: ~3 rows (approximately)
+/*!40000 ALTER TABLE `actionMap` DISABLE KEYS */;
+INSERT INTO `actionMap` (`ID`, `Action`, `Name`) VALUES
+	(1, 5, 'Text'),
+	(2, 6, 'Image'),
+	(3, 8, 'Video'),
+	(5, 7, 'Audio'),
+	(6, 14, 'Link');
+/*!40000 ALTER TABLE `actionMap` ENABLE KEYS */;
+/*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;
+/*!40014 SET FOREIGN_KEY_CHECKS=IF(@OLD_FOREIGN_KEY_CHECKS IS NULL, 1, @OLD_FOREIGN_KEY_CHECKS) */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+
+
 
 
 -- Dumping structure for table reputation.goalUpdates
@@ -197,14 +165,6 @@ CREATE TABLE IF NOT EXISTS `users` (
   UNIQUE KEY `UUID` (`UUID`)
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
--- Dumping data for table reputation.users: ~3 rows (approximately)
-/*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` (`ID`, `UUID`) VALUES
-	(2, '1C5D2E42-5C13-458B-AA5C-50A85B471F9'),
-	(3, '31F2E6D0-A822-4B80-BDA6-9FFD4F09CED5'),
-	(1, '4FA06769-C5C7-432B-9E37-4A3E7B4D294D');
-/*!40000 ALTER TABLE `users` ENABLE KEYS */;
-
 
 -- Dumping structure for table reputation.userSkills
 CREATE TABLE IF NOT EXISTS `userSkills` (
@@ -225,21 +185,23 @@ CREATE TABLE IF NOT EXISTS `userSkills` (
   CONSTRAINT `Users to userSkills` FOREIGN KEY (`User`) REFERENCES `users` (`ID`)
 ) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
--- Dumping data for table reputation.userSkills: ~10 rows (approximately)
-/*!40000 ALTER TABLE `userSkills` DISABLE KEYS */;
-INSERT INTO `userSkills` (`Key`, `User`, `Skill`, `Action`, `Time`, `Count`, `Rating`, `PDV`) VALUES
-	(1, 1, 1, 8, 0, 1, 2, 1.33333),
-	(2, 1, 1, 5, 0, 1, 0, 1),
-	(3, 1, 3, 9, 0, 1, 0, 1),
-	(4, 1, 5, 4, 0, 1, 0, 1),
-	(5, 1, 5, 5, 0, 1, 0, 1),
-	(6, 1, 5, 6, 0, 1, 0, 1),
-	(7, 1, 5, 7, 0, 1, 1, 1),
-	(8, 2, 5, 9, 0, 1, 0, 0.5),
-	(9, 3, 5, 9, 0, 3, 0, 1.5),
-	(12, 2, 1, 8, 0, 2, 0, 0);
-/*!40000 ALTER TABLE `userSkills` ENABLE KEYS */;
 
+-- Dumping structure for table reputation.activities
+CREATE TABLE IF NOT EXISTS `activities` (
+  `Key` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `User` int(11) unsigned NOT NULL,
+  `Action` int(11) unsigned NOT NULL,
+  `Skill` int(11) unsigned NOT NULL,
+  `Reference` varchar(50) COLLATE utf8_unicode_ci DEFAULT NULL,
+  `Date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`Key`),
+  KEY `Actions` (`Action`),
+  KEY `User` (`User`),
+  KEY `Tags` (`Skill`),
+  CONSTRAINT `Skills to activities` FOREIGN KEY (`Skill`) REFERENCES `skills` (`ID`),
+  CONSTRAINT `Actions to activities` FOREIGN KEY (`Action`) REFERENCES `actions` (`ID`),
+  CONSTRAINT `Users to activities` FOREIGN KEY (`User`) REFERENCES `users` (`ID`)
+) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 -- Dumping structure for trigger reputation.activity_insert
 SET @OLDTMP_SQL_MODE=@@SQL_MODE, SQL_MODE='';
@@ -278,3 +240,4 @@ SET SQL_MODE=@OLDTMP_SQL_MODE;
 /*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;
 /*!40014 SET FOREIGN_KEY_CHECKS=IF(@OLD_FOREIGN_KEY_CHECKS IS NULL, 1, @OLD_FOREIGN_KEY_CHECKS) */;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+
