@@ -137,8 +137,22 @@ exports.addUser = ( req, res, next ) ->
 
 exports.addSkill = ( req, res, next ) ->
     return unless reqParam( req, next, 'name' )
-    logger.verbose 'Adding user %s', req.params.name
-    query("INSERT INTO `skills` SET ?", { Name: req.params.name })
+    logger.verbose 'Adding skill %s', req.params.name
+    Q( getCacheItem 'skills', req.params.name ).then( (skillID) ->
+        if not skillID
+            query("INSERT INTO `skills` SET ?", {
+                Name: req.params.name
+            })
+        else
+            return insertId: skillID
+    )
+    .then( (wat) ->
+        cache.skills[req.params.name] = wat.insertId
+        query("INSERT INTO `projectSkills` SET ?", {
+            Project: req.projectID || null
+            Skill: wat.insertId
+        })
+    )
     .then( (wat) ->
         logger.debug 'Added skill'
         res.send 204
@@ -153,6 +167,7 @@ exports.addSkill = ( req, res, next ) ->
 
 exports.getUserRank = ( req, res, next ) ->
     return unless reqParam( req, next, 'user' )
+    connect() unless connection?
     logger.verbose 'User Rank Reqest for %s', req.params.user
     userRankQuery = "
         SELECT
@@ -162,6 +177,8 @@ exports.getUserRank = ( req, res, next ) ->
             (SELECT COUNT(*) as points, User FROM activities GROUP BY User) uo
         WHERE
             (ui.points, ui.User) >= (uo.points, uo.User) AND uo.User = ?"
+    if req.projectID
+        userRankQuery = " AND ui.Project = uo.Project AND ui.Project = " + connection.escape(req.projectID)
 
     Q( getCacheUser req.params.user )
     .then( ( userID ) ->
@@ -212,6 +229,7 @@ exports.performActivity = ( req, res, next ) ->
                 abort = true
                 return
             query "INSERT INTO `activities` SET ?", [{
+                Project: req.params.projectID
                 User: userID
                 Action: actionID
                 Skill: skillID
@@ -222,6 +240,7 @@ exports.performActivity = ( req, res, next ) ->
     .then( (wat) ->
         if abort
             query "INSERT INTO `allactivities` SET ?", [{
+                Project: req.params.projectID
                 User: req.params.activator.id
                 Action: req.params.target.type
                 Skill: req.params.target.tags
@@ -242,6 +261,8 @@ exports.performActivity = ( req, res, next ) ->
 
 # FIXME: actions.actionType = 3 OR actions.ID = 14 seems very specific to logquest, needs some redesign
 exports.skillsDistribution = ( req, res, next ) ->
+    connect() unless connection?
+
     distributionQuery = "
         SELECT
             skills.Name as Skill, actions.Name as Action, COUNT(*) as Count
@@ -251,7 +272,11 @@ exports.skillsDistribution = ( req, res, next ) ->
             ( actions.actionType = 3 OR actions.ID = 14 ) AND activities.Action = actions.ID
         RIGHT JOIN skills ON
             activities.Skill = skills.ID"
+    if req.projectID
+        distributionQuery += " AND activities.Project = " + connection.escape(req.projectID) + " JOIN projectSkills ON
+            skills.ID = projectSkills.Skill AND projectSkills.Project = " + connection.escape(req.projectID)
     if req.params.skills and req.params.skills instanceof Array
+        req.params.skills = req.params.skills.map (skill) -> connection.escape(skill)
         distributionQuery += " AND skills.Name IN ('" + req.params.skills.join("','") + "')"
     if req.params.user
         distributionQuery += " JOIN users ON activities.User = users.ID AND User = ?"
@@ -327,6 +352,8 @@ exports.skillsDistribution = ( req, res, next ) ->
 exports.skillsContribution = ( req, res, next ) ->
     return unless reqParam( req, next, 'user' )
     logger.verbose 'Skills contribution request for %s', req.params.user
+    connect() unless connection?
+
     distributionQuery = "
         SELECT
             skills.Name as Skill, COUNT(*) as Count, activities.User
@@ -335,8 +362,11 @@ exports.skillsContribution = ( req, res, next ) ->
         JOIN actions ON
             ( actions.actionType = 3 OR actions.ID = 14 ) AND activities.Action = actions.ID
         RIGHT JOIN skills ON
-            activities.Skill = skills.ID
-        GROUP BY
+            activities.Skill = skills.ID"
+    if req.projectID
+        distributionQuery += " AND activities.Project = " + connection.escape(req.projectID) + " JOIN projectSkills ON
+            skills.ID = projectSkills.Skill AND projectSkills.Project = " + connection.escape(req.projectID)
+    distributionQuery += " GROUP BY
             skills.ID, activities.User
         ORDER BY Skill, Count DESC"
 
@@ -396,6 +426,7 @@ exports.skillsContribution = ( req, res, next ) ->
 
 exports.userNumber = ( req, res, next ) ->
     logger.verbose 'User Number Request'
+    connect() unless connection?
     userNumberQuery = "
         SELECT
             skills.Name as Skill, COUNT(DISTINCT activities.User) as Count
@@ -403,10 +434,12 @@ exports.userNumber = ( req, res, next ) ->
             activities
         JOIN actions ON
             ( actions.actionType = 3 OR actions.ID = 14 ) AND activities.Action = actions.ID
-        RIGHT JOIN skills ON
-            activities.Skill = skills.ID
-        GROUP BY
-            skills.ID"
+         RIGHT JOIN skills ON
+            activities.Skill = skills.ID"
+    if req.projectID
+        userNumberQuery += " AND activities.Project = " + connection.escape(req.projectID) + " JOIN projectSkills ON
+            skills.ID = projectSkills.Skill AND projectSkills.Project = " + connection.escape(req.projectID)
+    userNumberQuery += " GROUP BY skills.ID"
 
     Q( query userNumberQuery )
     .then( (wat) ->
@@ -438,9 +471,15 @@ exports.skillsCounts = ( req, res, next ) ->
         FROM
             activities
         JOIN actions ON ( actions.actionType = 3 OR actions.ID = 14 ) AND actions.ID = activities.Action"
+    if req.projectID
+        countsQuery += " AND Project = " + connection.escape(req.projectID)
     if req.params.user
         countsQuery += " JOIN users ON users.UUID = " + connection.escape(req.params.user) + " AND users.ID = activities.User"
-    countsQuery += " RIGHT JOIN skills ON skills.ID = activities.Skill WHERE 1=1"
+    countsQuery += " RIGHT JOIN skills ON skills.ID = activities.Skill"
+    if req.projectID
+        countsQuery += " AND activities.Project = " + connection.escape(req.projectID) + " JOIN projectSkills ON
+            skills.ID = projectSkills.Skill AND projectSkills.Project = " + connection.escape(req.projectID)
+    countsQuery += " WHERE 1=1"
     if req.params.dateFrom
         countsQuery += " AND activities.Date >= " + connection.escape(req.params.dateFrom)
     if req.params.dateTo
@@ -479,6 +518,9 @@ exports.getContributionStatistics = ( req, res, next ) ->
         JOIN actions ON ( actions.actionType = 3 OR actions.ID = 14 ) AND actions.ID = activities.Action
         JOIN users ON users.ID = activities.User
         RIGHT JOIN skills ON skills.ID = activities.Skill"
+    if req.projectID
+        countsQuery += " AND activities.Project = " + connection.escape(req.projectID) + " JOIN projectSkills ON
+            skills.ID = projectSkills.Skill AND projectSkills.Project = " + connection.escape(req.projectID)
     countsQuery += " WHERE 1=1"
     if req.params.dateFrom
         countsQuery += " AND activities.Date >= " + connection.escape(req.params.dateFrom)

@@ -1,7 +1,7 @@
 -- --------------------------------------------------------
--- Host:                         10.0.0.2
--- Server version:               5.5.30-1.1 - (Debian)
--- Server OS:                    debian-linux-gnu
+-- Host:                         127.0.0.1
+-- Server version:               5.5.32 - MySQL Community Server (GPL)
+-- Server OS:                    Win32
 -- HeidiSQL Version:             8.3.0.4694
 -- --------------------------------------------------------
 
@@ -15,9 +15,31 @@ CREATE DATABASE IF NOT EXISTS `reputation` /*!40100 DEFAULT CHARACTER SET utf8 C
 USE `reputation`;
 
 
+-- Dumping structure for table reputation.actionmap
+DROP TABLE IF EXISTS `actionmap`;
+CREATE TABLE IF NOT EXISTS `actionmap` (
+  `ID` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `Action` int(11) unsigned NOT NULL,
+  `Name` varchar(100) COLLATE utf8_unicode_ci DEFAULT NULL,
+  PRIMARY KEY (`ID`),
+  UNIQUE KEY `Name` (`Name`),
+  KEY `FK__actions_map` (`Action`),
+  CONSTRAINT `FK__actions_map` FOREIGN KEY (`Action`) REFERENCES `actions` (`ID`)
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+-- Dumping data for table reputation.actionmap: ~5 rows (approximately)
+/*!40000 ALTER TABLE `actionmap` DISABLE KEYS */;
+INSERT INTO `actionmap` (`ID`, `Action`, `Name`) VALUES
+	(1, 5, 'Text'),
+	(2, 6, 'Image'),
+	(3, 8, 'Video'),
+	(5, 7, 'Audio'),
+	(6, 14, 'Link');
+/*!40000 ALTER TABLE `actionmap` ENABLE KEYS */;
 
 
 -- Dumping structure for table reputation.actions
+DROP TABLE IF EXISTS `actions`;
 CREATE TABLE IF NOT EXISTS `actions` (
   `ID` int(11) unsigned NOT NULL AUTO_INCREMENT,
   `ActionType` int(11) unsigned NOT NULL DEFAULT '0',
@@ -25,7 +47,7 @@ CREATE TABLE IF NOT EXISTS `actions` (
   PRIMARY KEY (`ID`),
   UNIQUE KEY `Name` (`Name`),
   KEY `Action Category` (`ActionType`),
-  CONSTRAINT `Action?Category` FOREIGN KEY (`ActionType`) REFERENCES `actionTypes` (`ID`)
+  CONSTRAINT `Action?Category` FOREIGN KEY (`ActionType`) REFERENCES `actiontypes` (`ID`)
 ) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 -- Dumping data for table reputation.actions: ~15 rows (approximately)
@@ -49,16 +71,17 @@ INSERT INTO `actions` (`ID`, `ActionType`, `Name`) VALUES
 /*!40000 ALTER TABLE `actions` ENABLE KEYS */;
 
 
--- Dumping structure for table reputation.actionTypes
-CREATE TABLE IF NOT EXISTS `actionTypes` (
+-- Dumping structure for table reputation.actiontypes
+DROP TABLE IF EXISTS `actiontypes`;
+CREATE TABLE IF NOT EXISTS `actiontypes` (
   `ID` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `Name` varchar(20) COLLATE utf8_unicode_ci NOT NULL DEFAULT '0',
   PRIMARY KEY (`ID`)
 ) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
--- Dumping data for table reputation.actionTypes: ~7 rows (approximately)
-/*!40000 ALTER TABLE `actionTypes` DISABLE KEYS */;
-INSERT INTO `actionTypes` (`ID`, `Name`) VALUES
+-- Dumping data for table reputation.actiontypes: ~7 rows (approximately)
+/*!40000 ALTER TABLE `actiontypes` DISABLE KEYS */;
+INSERT INTO `actiontypes` (`ID`, `Name`) VALUES
 	(1, 'Collect'),
 	(2, 'Relate'),
 	(3, 'Create - Generative'),
@@ -66,39 +89,55 @@ INSERT INTO `actionTypes` (`ID`, `Name`) VALUES
 	(5, 'Donate'),
 	(6, 'Reflect'),
 	(7, 'Observe');
-/*!40000 ALTER TABLE `actionTypes` ENABLE KEYS */;
+/*!40000 ALTER TABLE `actiontypes` ENABLE KEYS */;
 
 
--- Dumping structure for table reputation.actionMap
-DROP TABLE IF EXISTS `actionMap`;
-CREATE TABLE IF NOT EXISTS `actionMap` (
-  `ID` int(11) unsigned NOT NULL AUTO_INCREMENT,
+-- Dumping structure for table reputation.activities
+DROP TABLE IF EXISTS `activities`;
+CREATE TABLE IF NOT EXISTS `activities` (
+  `Key` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `Project` varchar(50) COLLATE utf8_unicode_ci DEFAULT NULL,
+  `User` int(11) unsigned NOT NULL,
   `Action` int(11) unsigned NOT NULL,
-  `Name` varchar(100) COLLATE utf8_unicode_ci DEFAULT NULL,
-  PRIMARY KEY (`ID`),
-  UNIQUE KEY `Name` (`Name`),
-  KEY `FK__actions_map` (`Action`),
-  CONSTRAINT `FK__actions_map` FOREIGN KEY (`Action`) REFERENCES `actions` (`ID`)
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+  `Skill` int(11) unsigned NOT NULL,
+  `Reference` varchar(50) COLLATE utf8_unicode_ci DEFAULT NULL,
+  `Date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`Key`),
+  KEY `Actions` (`Action`),
+  KEY `User` (`User`),
+  KEY `Tags` (`Skill`),
+  CONSTRAINT `Actions to activities` FOREIGN KEY (`Action`) REFERENCES `actions` (`ID`),
+  CONSTRAINT `Skills to activities` FOREIGN KEY (`Skill`) REFERENCES `skills` (`ID`),
+  CONSTRAINT `Users to activities` FOREIGN KEY (`User`) REFERENCES `users` (`ID`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
--- Dumping data for table reputation.actionMap: ~3 rows (approximately)
-/*!40000 ALTER TABLE `actionMap` DISABLE KEYS */;
-INSERT INTO `actionMap` (`ID`, `Action`, `Name`) VALUES
-	(1, 5, 'Text'),
-	(2, 6, 'Image'),
-	(3, 8, 'Video'),
-	(5, 7, 'Audio'),
-	(6, 14, 'Link');
-/*!40000 ALTER TABLE `actionMap` ENABLE KEYS */;
-/*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;
-/*!40014 SET FOREIGN_KEY_CHECKS=IF(@OLD_FOREIGN_KEY_CHECKS IS NULL, 1, @OLD_FOREIGN_KEY_CHECKS) */;
-/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+-- Dumping data for table reputation.activities: ~0 rows (approximately)
+/*!40000 ALTER TABLE `activities` DISABLE KEYS */;
+/*!40000 ALTER TABLE `activities` ENABLE KEYS */;
 
 
+-- Dumping structure for table reputation.allactivities
+DROP TABLE IF EXISTS `allactivities`;
+CREATE TABLE IF NOT EXISTS `allactivities` (
+  `Key` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `Project` varchar(50) COLLATE utf8_unicode_ci DEFAULT NULL,
+  `User` varchar(100) COLLATE utf8_unicode_ci DEFAULT NULL,
+  `Action` varchar(100) COLLATE utf8_unicode_ci DEFAULT NULL,
+  `Skill` varchar(100) COLLATE utf8_unicode_ci DEFAULT NULL,
+  `Reference` varchar(50) COLLATE utf8_unicode_ci DEFAULT NULL,
+  `Blob` text COLLATE utf8_unicode_ci,
+  `Date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`Key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+-- Dumping data for table reputation.allactivities: ~0 rows (approximately)
+/*!40000 ALTER TABLE `allactivities` DISABLE KEYS */;
+/*!40000 ALTER TABLE `allactivities` ENABLE KEYS */;
 
 
--- Dumping structure for table reputation.goalUpdates
-CREATE TABLE IF NOT EXISTS `goalUpdates` (
+-- Dumping structure for table reputation.goalupdates
+DROP TABLE IF EXISTS `goalupdates`;
+CREATE TABLE IF NOT EXISTS `goalupdates` (
   `Key` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `User` int(10) unsigned NOT NULL DEFAULT '0',
   `Status` enum('ACCEPT','DECLINE','VIEW INFO','PROGRESS','COMPLETE','TIME OUT','GIVE UP') COLLATE utf8_unicode_ci NOT NULL COMMENT 'The thing what they do',
@@ -110,32 +149,53 @@ CREATE TABLE IF NOT EXISTS `goalUpdates` (
   CONSTRAINT `goalUpdate to user` FOREIGN KEY (`User`) REFERENCES `users` (`ID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='When the user does a thing';
 
--- Dumping data for table reputation.goalUpdates: ~0 rows (approximately)
-/*!40000 ALTER TABLE `goalUpdates` DISABLE KEYS */;
-/*!40000 ALTER TABLE `goalUpdates` ENABLE KEYS */;
+-- Dumping data for table reputation.goalupdates: ~0 rows (approximately)
+/*!40000 ALTER TABLE `goalupdates` DISABLE KEYS */;
+/*!40000 ALTER TABLE `goalupdates` ENABLE KEYS */;
+
+
+-- Dumping structure for table reputation.projectskills
+DROP TABLE IF EXISTS `projectskills`;
+CREATE TABLE IF NOT EXISTS `projectskills` (
+  `ID` int(11) NOT NULL AUTO_INCREMENT,
+  `Project` varchar(50) COLLATE utf8_unicode_ci DEFAULT NULL,
+  `Skill` int(11) unsigned NOT NULL,
+  PRIMARY KEY (`ID`),
+  UNIQUE KEY `Project_Skill` (`Project`,`Skill`),
+  KEY `Skill` (`Skill`),
+  CONSTRAINT `FK_projectSkills_skills` FOREIGN KEY (`Skill`) REFERENCES `skills` (`ID`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+-- Dumping data for table reputation.projectskills: ~3 rows (approximately)
+/*!40000 ALTER TABLE `projectskills` DISABLE KEYS */;
+INSERT INTO `projectskills` (`ID`, `Project`, `Skill`) VALUES
+	(1, NULL, 1),
+	(2, NULL, 2),
+	(3, NULL, 3);
+/*!40000 ALTER TABLE `projectskills` ENABLE KEYS */;
 
 
 -- Dumping structure for table reputation.skills
+DROP TABLE IF EXISTS `skills`;
 CREATE TABLE IF NOT EXISTS `skills` (
   `ID` int(11) unsigned NOT NULL AUTO_INCREMENT,
   `Name` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
   PRIMARY KEY (`ID`),
   UNIQUE KEY `Name` (`Name`)
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
--- Dumping data for table reputation.skills: ~5 rows (approximately)
+-- Dumping data for table reputation.skills: ~3 rows (approximately)
 /*!40000 ALTER TABLE `skills` DISABLE KEYS */;
 INSERT INTO `skills` (`ID`, `Name`) VALUES
-	(1, 'Database'),
-	(4, 'Design'),
-	(2, 'Elastic Cloud Computing'),
-	(5, 'node.js'),
-	(3, 'UX');
+	(1, 'explorative workshops'),
+	(3, 'open materials'),
+	(2, 'sustainable resources');
 /*!40000 ALTER TABLE `skills` ENABLE KEYS */;
 
 
--- Dumping structure for table reputation.userPreferences
-CREATE TABLE IF NOT EXISTS `userPreferences` (
+-- Dumping structure for table reputation.userpreferences
+DROP TABLE IF EXISTS `userpreferences`;
+CREATE TABLE IF NOT EXISTS `userpreferences` (
   `ID` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `User` int(10) unsigned NOT NULL,
   `Action` int(10) unsigned NOT NULL,
@@ -147,27 +207,33 @@ CREATE TABLE IF NOT EXISTS `userPreferences` (
   KEY `Preferences - User` (`User`),
   KEY `Preferences - Action` (`Action`),
   KEY `Preferences - Skill` (`Skill`),
-  CONSTRAINT `Preferences - User` FOREIGN KEY (`User`) REFERENCES `users` (`ID`),
   CONSTRAINT `Preferences - Action` FOREIGN KEY (`Action`) REFERENCES `actions` (`ID`),
-  CONSTRAINT `Preferences - Skill` FOREIGN KEY (`Skill`) REFERENCES `skills` (`ID`)
+  CONSTRAINT `Preferences - Skill` FOREIGN KEY (`Skill`) REFERENCES `skills` (`ID`),
+  CONSTRAINT `Preferences - User` FOREIGN KEY (`User`) REFERENCES `users` (`ID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
--- Dumping data for table reputation.userPreferences: ~0 rows (approximately)
-/*!40000 ALTER TABLE `userPreferences` DISABLE KEYS */;
-/*!40000 ALTER TABLE `userPreferences` ENABLE KEYS */;
+-- Dumping data for table reputation.userpreferences: ~0 rows (approximately)
+/*!40000 ALTER TABLE `userpreferences` DISABLE KEYS */;
+/*!40000 ALTER TABLE `userpreferences` ENABLE KEYS */;
 
 
 -- Dumping structure for table reputation.users
+DROP TABLE IF EXISTS `users`;
 CREATE TABLE IF NOT EXISTS `users` (
   `ID` int(11) unsigned NOT NULL AUTO_INCREMENT,
-  `UUID` char(36) COLLATE utf8_unicode_ci NOT NULL,
+  `UUID` varchar(50) COLLATE utf8_unicode_ci NOT NULL,
   PRIMARY KEY (`ID`),
   UNIQUE KEY `UUID` (`UUID`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+-- Dumping data for table reputation.users: ~0 rows (approximately)
+/*!40000 ALTER TABLE `users` DISABLE KEYS */;
+/*!40000 ALTER TABLE `users` ENABLE KEYS */;
 
 
--- Dumping structure for table reputation.userSkills
-CREATE TABLE IF NOT EXISTS `userSkills` (
+-- Dumping structure for table reputation.userskills
+DROP TABLE IF EXISTS `userskills`;
+CREATE TABLE IF NOT EXISTS `userskills` (
   `Key` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `User` int(10) unsigned NOT NULL,
   `Skill` int(10) unsigned NOT NULL,
@@ -183,32 +249,36 @@ CREATE TABLE IF NOT EXISTS `userSkills` (
   CONSTRAINT ` Skills to userSkills` FOREIGN KEY (`Skill`) REFERENCES `skills` (`ID`),
   CONSTRAINT `Actions to userSkills` FOREIGN KEY (`Action`) REFERENCES `actions` (`ID`),
   CONSTRAINT `Users to userSkills` FOREIGN KEY (`User`) REFERENCES `users` (`ID`)
-) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+-- Dumping data for table reputation.userskills: ~0 rows (approximately)
+/*!40000 ALTER TABLE `userskills` DISABLE KEYS */;
+/*!40000 ALTER TABLE `userskills` ENABLE KEYS */;
 
 
--- Dumping structure for table reputation.activities
-CREATE TABLE IF NOT EXISTS `activities` (
-  `Key` int(11) unsigned NOT NULL AUTO_INCREMENT,
-  `User` int(11) unsigned NOT NULL,
-  `Action` int(11) unsigned NOT NULL,
-  `Skill` int(11) unsigned NOT NULL,
-  `Reference` varchar(50) COLLATE utf8_unicode_ci DEFAULT NULL,
+-- Dumping structure for table reputation.userstats
+DROP TABLE IF EXISTS `userstats`;
+CREATE TABLE IF NOT EXISTS `userstats` (
+  `ID` int(11) NOT NULL AUTO_INCREMENT,
+  `User` int(11) NOT NULL,
+  `Count` int(11) NOT NULL,
   `Date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`Key`),
-  KEY `Actions` (`Action`),
-  KEY `User` (`User`),
-  KEY `Tags` (`Skill`),
-  CONSTRAINT `Skills to activities` FOREIGN KEY (`Skill`) REFERENCES `skills` (`ID`),
-  CONSTRAINT `Actions to activities` FOREIGN KEY (`Action`) REFERENCES `actions` (`ID`),
-  CONSTRAINT `Users to activities` FOREIGN KEY (`User`) REFERENCES `users` (`ID`)
-) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+  PRIMARY KEY (`ID`),
+  KEY `User_Date` (`User`,`Date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+-- Dumping data for table reputation.userstats: ~0 rows (approximately)
+/*!40000 ALTER TABLE `userstats` DISABLE KEYS */;
+/*!40000 ALTER TABLE `userstats` ENABLE KEYS */;
+
 
 -- Dumping structure for trigger reputation.activity_insert
-SET @OLDTMP_SQL_MODE=@@SQL_MODE, SQL_MODE='';
+DROP TRIGGER IF EXISTS `activity_insert`;
+SET @OLDTMP_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO';
 DELIMITER //
 CREATE TRIGGER `activity_insert` AFTER INSERT ON `activities` FOR EACH ROW BEGIN
 		INSERT INTO userSkills (User, Skill, Action, Count) VALUES (NEW.User, NEW.Skill, NEW.Action, 1) ON DUPLICATE KEY UPDATE Count = Count + 1;
-		
+
 		UPDATE userSkills, (
 			SELECT User, Action, Skill
 			FROM activities
@@ -220,12 +290,12 @@ CREATE TRIGGER `activity_insert` AFTER INSERT ON `activities` FOR EACH ROW BEGIN
 					WHERE actions.ActionType = 3
 				)
 				LIMIT 1
-			) as referencedRow 
+			) as referencedRow
 		SET Rating = Rating + 1
 		WHERE userSkills.User = referencedRow.User
 			AND userSkills.Skill = referencedRow.Skill
 			AND userSkills.Action = referencedRow.Action;
-		
+
 		UPDATE userSkills, (
 			SELECT Skill, Action, AVG(Count) as avgCount, AVG(Rating) as avgRating
 			FROM userSkills
@@ -240,4 +310,3 @@ SET SQL_MODE=@OLDTMP_SQL_MODE;
 /*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;
 /*!40014 SET FOREIGN_KEY_CHECKS=IF(@OLD_FOREIGN_KEY_CHECKS IS NULL, 1, @OLD_FOREIGN_KEY_CHECKS) */;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-

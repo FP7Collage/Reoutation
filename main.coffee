@@ -38,6 +38,15 @@ jsonClient.post '/listeners', {
 server = restify.createServer({
     name: 'Reputation Service'
 })
+
+server.pre (req, res, next) ->
+    if req.path().indexOf('/project/') != -1
+        req.projectID = req.path().split('/', 3)[2]
+        req._path = req.path().substring(req.path().split('/', 3).join('/').length)
+    else
+        req.projectID = ''
+    next()
+
 server.use restify.queryParser()
 server.use restify.bodyParser()
 server.get '/', (req, res, next) ->
