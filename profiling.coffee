@@ -226,6 +226,7 @@ exports.performActivity = ( req, res, next ) ->
                 abort = true
                 return
             query "INSERT INTO `activities` SET ?", [{
+                Project: req.projectID
                 User: userID
                 Action: actionID
                 Skill: skillID
@@ -236,6 +237,7 @@ exports.performActivity = ( req, res, next ) ->
     .then( (wat) ->
         if abort
             query "INSERT INTO `allactivities` SET ?", [{
+                Project: req.projectID
                 User: req.params.activator.id
                 Action: req.params.target.type
                 Skill: req.params.target.tags
