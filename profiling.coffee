@@ -137,8 +137,22 @@ exports.addUser = ( req, res, next ) ->
 
 exports.addSkill = ( req, res, next ) ->
     return unless reqParam( req, next, 'name' )
-    logger.verbose 'Adding user %s', req.params.name
-    query("INSERT INTO `skills` SET ?", { Name: req.params.name })
+    logger.verbose 'Adding skill %s', req.params.name
+    Q( getCacheItem 'skills', req.params.name ).then( (skillID) ->
+        if not skillID
+            query("INSERT INTO `skills` SET ?", {
+                Name: req.params.name
+            })
+        else
+            return insertId: skillID
+    )
+    .then( (wat) ->
+        cache.skills[req.params.name] = wat.insertId
+        query("INSERT INTO `projectSkills` SET ?", {
+            Project: req.projectID || null
+            Skill: wat.insertId
+        })
+    )
     .then( (wat) ->
         logger.debug 'Added skill'
         res.send 204
