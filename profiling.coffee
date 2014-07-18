@@ -26,7 +26,7 @@ connect = () ->
 connect()
 
 query = ( txt, args = [] ) ->
-    logger.debug "Query!", txt, args, connection?
+    logger.silly "Query!", txt, args, connection?
     connect() unless connection?
     Q.ninvoke( connection, 'query', txt, args ).then (res) -> res[0]
 
