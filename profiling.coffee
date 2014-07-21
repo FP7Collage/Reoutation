@@ -73,6 +73,18 @@ reqParam = ( req, next, p ) ->
         return false
     return true
 
+failurePromise = ( req, res, action ) ->
+    return ( errorMsg ) ->
+
+        errorMsg = errorMsg.toString()
+        logger.error "%s: Couldn\'t #{action}: %s", req.id, errorMsg
+        # Assume the error has already been handled
+        unless res._headerSent
+            res.send new restify.InternalServerError errorMsg
+
+        return undefined
+
+
 getRecommendations = ( req, res, next, queryString ) ->
     return unless reqParam( req, next, 'user' )
     return unless reqParam( req, next, 'names' )
@@ -114,11 +126,7 @@ getRecommendations = ( req, res, next, queryString ) ->
         return results
 
     )
-    .fail( (whoops) ->
-        whoops = whoops.toString()
-        logger.error '%s: Couldn\'t req.id, get recommendations: %s', whoops
-        res.send 500, "Shit broke: " + whoops
-    )
+    .fail( failurePromise req, res, 'get recommendations' )
     .finally(next)
     .done()
 
@@ -130,11 +138,7 @@ exports.addUser = ( req, res, next ) ->
         logger.debug '%s: Added user', req.id
         res.send 204
     )
-    .fail( (whoops) ->
-        whoops = whoops.toString()
-        logger.error '%s: Could not add user: %s', req.id, whoops
-        res.send 500, "Shit broke: " + whoops
-    )
+    .fail( failurePromise req, res, 'add user' )
     .finally(next)
     .done()
 
@@ -160,11 +164,7 @@ exports.addSkill = ( req, res, next ) ->
         logger.debug '%s: Added skill', req.id
         res.send 204
     )
-    .fail( (whoops) ->
-        whoops = whoops.toString()
-        logger.error '%s: Could not add skill: %s', req.id, whoops
-        res.send 500, "Shit broke: " + whoops
-    )
+    .fail( failurePromise req, res, 'add skill' )
     .finally(next)
     .done()
 
@@ -194,11 +194,7 @@ exports.getUserRank = ( req, res, next ) ->
         logger.debug '%s: Sending user ranks:\n%j', req.id, wat, {}
         res.send 200, wat
     )
-    .fail( (whoops) ->
-        whoops = whoops.toString()
-        logger.error '%s: Get user rank failed', req.id, whoops
-        res.send 500, "Shit broke: " + whoops
-    )
+    .fail( failurePromise req, res, 'get user ran' )
     .finally(next)
     .done()
 
@@ -254,11 +250,7 @@ exports.performActivity = ( req, res, next ) ->
         logger.debug '%s: Activity inserted', req.id
         res.send 204
     )
-    .fail( (whoops) ->
-        whoops = whoops.toString()
-        logger.error '%s: Could not insert activity: %s', req.id, whoops
-        res.send 500, "Shit broke: " + whoops
-    )
+    .fail( failurePromise req, res, 'insert activity' )
     .finally(next)
     .done()
 
@@ -344,11 +336,7 @@ exports.skillsDistribution = ( req, res, next ) ->
         return results
 
     )
-    .fail( (whoops) ->
-        whoops = whoops.toString()
-        logger.error '%s: Couldn\'t get skill distribution: %s', req.id, whoops
-        res.send 500, "Shit broke: " + whoops
-    )
+    .fail( failurePromise req, res, 'get skill distribution' )
     .finally(next)
     .done()
 
@@ -419,11 +407,7 @@ exports.skillsContribution = ( req, res, next ) ->
         return results
 
     )
-    .fail( (whoops) ->
-        whoops = whoops.toString()
-        logger.error '%s: Couldn\'t get skill contributions: %s', req.id, whoops
-        res.send 500, "Shit broke: " + whoops
-    )
+    .fail( failurePromise req, res, 'get skill contributions' )
     .finally(next)
     .done()
 
@@ -503,11 +487,7 @@ exports.skillsCounts = ( req, res, next ) ->
         return results
 
     )
-    .fail( (whoops) ->
-        whoops = whoops.toString()
-        logger.error '%s: Couldn\'t get skills count: %s', req.id, whoops
-        res.send 500, "Shit broke: " + whoops
-    )
+    .fail( failurePromise req, res, 'get skills counts' )
     .finally(next)
     .done()
 
@@ -590,11 +570,7 @@ exports.getContributionStatistics = ( req, res, next ) ->
         return users
 
     )
-    .fail( (whoops) ->
-        whoops = whoops.toString()
-        logger.error '%s: Couldn\'t get contribution statistics: %s', req.id, whoops
-        res.send 500, "Shit broke: " + whoops
-    )
+    .fail( failurePromise req, res, 'get contribution statistics' )
     .finally(next)
     .done()
 
