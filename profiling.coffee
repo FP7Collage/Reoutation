@@ -43,7 +43,7 @@ getCacheItem = ( key, name ) ->
         return Q( cacheItem )
     logger.silly 'Cache miss for %s["%s"]', key, name
     query( 'SELECT `ID` FROM ?? WHERE `Name` = ?', [ key, name ] ).then (results) ->
-        logger.silly "Got item: %j", results
+        logger.silly "Got item: %j", results, {}
         cache[ key ][ name ] = results[0]?.ID || false
 
 getCacheAction = ( name ) ->
@@ -53,7 +53,7 @@ getCacheAction = ( name ) ->
         return Q( cacheItem )
     logger.silly 'Cache miss for actions["%s"]', name
     query( 'SELECT `Action` FROM actionMap WHERE `Name` = ?', [ name ] ).then (results) ->
-        logger.silly "Got action: %j", results
+        logger.silly "Got action: %j", results, {}
         cache[ 'actions' ][ name ] = results[0]?.Action || false
 
 getCacheUser = ( UUID ) ->
@@ -63,7 +63,7 @@ getCacheUser = ( UUID ) ->
         return Q( cacheUser )
     logger.silly 'Cache miss for users["%s"]', UUID
     query( 'SELECT `ID` FROM ?? WHERE `UUID` = ?', [ 'users', UUID ] ).then (results) ->
-        logger.silly "Got user: %j", results
+        logger.silly "Got user: %j", results, {}
         cache[ 'users' ][ UUID ] = results[0]?.ID || false
 
 reqParam = ( req, next, p ) ->
