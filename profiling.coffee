@@ -26,7 +26,7 @@ connect = () ->
 connect()
 
 query = ( txt, args = [] ) ->
-    logger.debug "Query!", txt, args, connection?
+    logger.silly "Query!", txt, args, connection?
     connect() unless connection?
     Q.ninvoke( connection, 'query', txt, args ).then (res) -> res[0]
 
@@ -43,7 +43,7 @@ getCacheItem = ( key, name ) ->
         return Q( cacheItem )
     logger.silly 'Cache miss for %s["%s"]', key, name
     query( 'SELECT `ID` FROM ?? WHERE `Name` = ?', [ key, name ] ).then (results) ->
-        logger.silly "Got item: %j", results
+        logger.silly "Got item: %j", results, {}
         cache[ key ][ name ] = results[0]?.ID || false
 
 getCacheAction = ( name ) ->
@@ -53,7 +53,7 @@ getCacheAction = ( name ) ->
         return Q( cacheItem )
     logger.silly 'Cache miss for actions["%s"]', name
     query( 'SELECT `Action` FROM actionMap WHERE `Name` = ?', [ name ] ).then (results) ->
-        logger.silly "Got action: %j", results
+        logger.silly "Got action: %j", results, {}
         cache[ 'actions' ][ name ] = results[0]?.Action || false
 
 getCacheUser = ( UUID ) ->
@@ -63,7 +63,7 @@ getCacheUser = ( UUID ) ->
         return Q( cacheUser )
     logger.silly 'Cache miss for users["%s"]', UUID
     query( 'SELECT `ID` FROM ?? WHERE `UUID` = ?', [ 'users', UUID ] ).then (results) ->
-        logger.silly "Got user: %j", results
+        logger.silly "Got user: %j", results, {}
         cache[ 'users' ][ UUID ] = results[0]?.ID || false
 
 reqParam = ( req, next, p ) ->
@@ -75,6 +75,8 @@ reqParam = ( req, next, p ) ->
 getRecommendations = ( req, res, next, queryString ) ->
     return unless reqParam( req, next, 'user' )
     return unless reqParam( req, next, 'names' )
+
+    logger.verbose '%s: Getting recommendations for %s %s', req.id, req.params.user, req.params.names
 
     Q(
         getCacheUser req.params.user
@@ -106,14 +108,14 @@ getRecommendations = ( req, res, next, queryString ) ->
                 else
                     return { Name: name, Done: 0, Referenced: 0, Probability: 0 }
 
-        logger.debug 'Sending recommendations:\n%j', results
+        logger.debug '%s: Sending recommendations:\n%j', req.id, results, {}
         res.send 200, results
         return results
 
     )
     .fail( (whoops) ->
         whoops = whoops.toString()
-        logger.error 'Couldn\'t get recommendations: %s', whoops
+        logger.error '%s: Couldn\'t req.id, get recommendations: %s', whoops
         res.send 500, "Shit broke: " + whoops
     )
     .finally(next)
@@ -121,15 +123,15 @@ getRecommendations = ( req, res, next, queryString ) ->
 
 exports.addUser = ( req, res, next ) ->
     return unless reqParam( req, next, 'id' )
-    logger.verbose 'Adding user %s', req.params.id
+    logger.verbose '%s: Adding user %s', req.id, req.params.id
     query("INSERT INTO `users` SET ?", { UUID: req.params.id })
     .then( (wat) ->
-        logger.debug 'Added user'
+        logger.debug '%s: Added user', req.id
         res.send 204
     )
     .fail( (whoops) ->
         whoops = whoops.toString()
-        logger.error 'Could not add user: %s', whoops
+        logger.error '%s: Could not add user: %s', req.id, whoops
         res.send 500, "Shit broke: " + whoops
     )
     .finally(next)
@@ -137,7 +139,7 @@ exports.addUser = ( req, res, next ) ->
 
 exports.addSkill = ( req, res, next ) ->
     return unless reqParam( req, next, 'name' )
-    logger.verbose 'Adding skill %s', req.params.name
+    logger.verbose '%s: Adding user %s', req.id, req.params.name
     Q( getCacheItem 'skills', req.params.name ).then( (skillID) ->
         if not skillID
             query("INSERT INTO `skills` SET ?", {
@@ -154,12 +156,12 @@ exports.addSkill = ( req, res, next ) ->
         })
     )
     .then( (wat) ->
-        logger.debug 'Added skill'
+        logger.debug '%s: Added skill', req.id
         res.send 204
     )
     .fail( (whoops) ->
         whoops = whoops.toString()
-        logger.error 'Could not add skill: %s', whoops
+        logger.error '%s: Could not add skill: %s', req.id, whoops
         res.send 500, "Shit broke: " + whoops
     )
     .finally(next)
@@ -168,7 +170,7 @@ exports.addSkill = ( req, res, next ) ->
 exports.getUserRank = ( req, res, next ) ->
     return unless reqParam( req, next, 'user' )
     connect() unless connection?
-    logger.verbose 'User Rank Reqest for %s', req.params.user
+    logger.verbose '%s: User Rank Reqest for %s', req.id, req.params.user
     userRankQuery = "
         SELECT
             COUNT(*) as rank
@@ -188,12 +190,12 @@ exports.getUserRank = ( req, res, next ) ->
     .then( (wat) ->
         if wat.length > 0
             wat = wat[0]
-        logger.debug 'Sending user ranks:\n%j', wat
+        logger.debug '%s: Sending user ranks:\n%j', req.id, wat, {}
         res.send 200, wat
     )
     .fail( (whoops) ->
         whoops = whoops.toString()
-        logger.error 'Get user rank failed', whoops
+        logger.error '%s: Get user rank failed', req.id, whoops
         res.send 500, "Shit broke: " + whoops
     )
     .finally(next)
@@ -205,7 +207,7 @@ exports.getUserRank = ( req, res, next ) ->
 exports.performActivity = ( req, res, next ) ->
     return unless reqParam( req, next, 'type' ) and reqParam( req, next, 'target' ) and reqParam( req, next, 'activator' )
 
-    logger.verbose 'Activity performed: %s in %s by %s', req.params.type, req.params.target, req.params.activator
+    logger.verbose '%s: Activity performed: %s in %s by %s', req.id, req.params.type, req.params.target, req.params.activator
 
     abort = false
 
@@ -215,7 +217,7 @@ exports.performActivity = ( req, res, next ) ->
             getCacheItem 'skills', skill
             getCacheUser req.params.activator.id
         ]).spread( ( actionID, skillID, userID ) ->
-            logger.silly "Got IDs: %j", arguments
+            logger.silly "%s: , req.idGot IDs: %j", arguments, {}
             if not actionID
                 next new restify.InvalidArgumentError "Unknown action type '#{req.params.type}'"
                 abort = true
@@ -248,12 +250,12 @@ exports.performActivity = ( req, res, next ) ->
                 Blob: JSON.stringify req.params
                 }]
             return
-        logger.debug 'Activity inserted'
+        logger.debug '%s: Activity inserted', req.id
         res.send 204
     )
     .fail( (whoops) ->
         whoops = whoops.toString()
-        logger.error 'Could not insert activity: %s', whoops
+        logger.error '%s: Could not insert activity: %s', req.id, whoops
         res.send 500, "Shit broke: " + whoops
     )
     .finally(next)
@@ -284,14 +286,14 @@ exports.skillsDistribution = ( req, res, next ) ->
             skills.ID, activities.Action, activities.User"
 
     if req.params.user
-        logger.verbose 'Skill distribution query for %s', req.params.user
+        logger.verbose '%s: Skill distribution query for %s', req.id, req.params.user
         promise = Q( getCacheUser req.params.user )
             .then( ( userID ) ->
                 return next new restify.InvalidArgumentError "Unknown user '#{req.params.user}'" unless userID
                 query distributionQuery, [ userID ]
             )
     else
-        logger.verbose 'Skill distribution query for everyone'
+        logger.verbose '%s: Skill distribution query for everyone', req.id
         promise = query distributionQuery
 
     promise.then( (wat) ->
@@ -336,14 +338,14 @@ exports.skillsDistribution = ( req, res, next ) ->
             results = (skill for name,skill of skills)
 
 
-        logger.debug 'Sending skill distribution:\n%j', results
+        logger.debug '%s: Sending skill distribution:\n%j', req.id, results, {}
         res.send 200, results
         return results
 
     )
     .fail( (whoops) ->
         whoops = whoops.toString()
-        logger.error 'Couldn\'t get skill distribution: %s', whoops
+        logger.error '%s: Couldn\'t get skill distribution: %s', req.id, whoops
         res.send 500, "Shit broke: " + whoops
     )
     .finally(next)
@@ -351,7 +353,7 @@ exports.skillsDistribution = ( req, res, next ) ->
 
 exports.skillsContribution = ( req, res, next ) ->
     return unless reqParam( req, next, 'user' )
-    logger.verbose 'Skills contribution request for %s', req.params.user
+    logger.verbose '%s: Skills contribution request for %s', req.id, req.params.user
     connect() unless connection?
 
     distributionQuery = "
@@ -411,21 +413,21 @@ exports.skillsContribution = ( req, res, next ) ->
                     rank: rank
                     contribution: 0
 
-        logger.debug 'Sending skill contributions:\n%j', results
+        logger.debug '%s: Sending skill contributions:\n%j', req.id, results, {}
         res.send 200, results
         return results
 
     )
     .fail( (whoops) ->
         whoops = whoops.toString()
-        logger.error 'Couldn\'t get skill contributions: %s', whoops
+        logger.error '%s: Couldn\'t get skill contributions: %s', req.id, whoops
         res.send 500, "Shit broke: " + whoops
     )
     .finally(next)
     .done()
 
 exports.userNumber = ( req, res, next ) ->
-    logger.verbose 'User Number Request'
+    logger.verbose '%s: User Number Request', req.id
     connect() unless connection?
     userNumberQuery = "
         SELECT
@@ -448,14 +450,14 @@ exports.userNumber = ( req, res, next ) ->
             for row in wat
                 result[row.Skill] = row.Count
 
-        logger.debug 'Sending skill user number:\n%j', result
+        logger.debug '%s: Sending skill user number:\n%j', req.id, result, {}
         res.send 200, result
         return result
 
     )
     .fail( (whoops) ->
         whoops = whoops.toString()
-        logger.error 'Couldn\'t get user number: %s', whoops
+        logger.error '%s: Couldn\'t get user number: %s', req.id, whoops
         res.send 500, "Shit broke: " + whoops
     )
     .finally(next)
@@ -487,7 +489,7 @@ exports.skillsCounts = ( req, res, next ) ->
     countsQuery += " GROUP BY
             skills.ID ORDER BY Count DESC, activities.Skill ASC"
 
-    logger.verbose 'Skills Counts Requests: %s, %s, %s', req.params.user, req.params.dateFrom, req.params.dateTo
+    logger.verbose '%s: Skills Counts Requests: %s, %s, %s', req.id, req.params.user, req.params.dateFrom, req.params.dateTo
 
     query( countsQuery )
     .then( (wat) ->
@@ -495,14 +497,14 @@ exports.skillsCounts = ( req, res, next ) ->
         wat.forEach ( oneWat ) ->
             results[oneWat.Skill] = oneWat.Count
 
-        logger.debug 'Sending skills counts:\n%j\n', results
+        logger.debug '%s: Sending skills counts:\n%j\n', req.id, results, {}
         res.send 200, results
         return results
 
     )
     .fail( (whoops) ->
         whoops = whoops.toString()
-        logger.error 'Couldn\'t get skills count: %s', whoops
+        logger.error '%s: Couldn\'t get skills count: %s', req.id, whoops
         res.send 500, "Shit broke: " + whoops
     )
     .finally(next)
@@ -530,7 +532,7 @@ exports.getContributionStatistics = ( req, res, next ) ->
             skills.ID, activities.User
             ORDER BY activities.Skill ASC, Count DESC"
 
-    logger.verbose 'User contributions statistics Requests: %s, %s, %s', req.params.dateFrom, req.params.dateTo
+    logger.verbose '%s: User contributions statistics Request: %s, %s', req.id, req.params.dateFrom, req.params.dateTo
 
     query( countsQuery )
     .then( (wat) ->
@@ -582,21 +584,21 @@ exports.getContributionStatistics = ( req, res, next ) ->
                 users[rankObj.user].rank = rank+1
 
 
-        logger.debug 'Sending users contribution statistics:\n%j', users
+        logger.debug '%s: Sending users contribution statistics:\n%j', req.id, users, {}
         res.send 200, users
         return users
 
     )
     .fail( (whoops) ->
         whoops = whoops.toString()
-        logger.error 'Couldn\'t get contribution statistics: %s', whoops
+        logger.error '%s: Couldn\'t get contribution statistics: %s', req.id, whoops
         res.send 500, "Shit broke: " + whoops
     )
     .finally(next)
     .done()
 
 exports.recommendSkills = ( req, res, next ) ->
-    logger.verbose 'Skill Recommendations Reqest for %s in %j', req.params.user, req.params.names
+    logger.verbose '%s: Skill Recommendations Reqest for %s in %j', req.id, req.params.user, req.params.names, {}
     statisticsQuery = "
         SELECT skills.Name, b1.Done, b2.Referenced FROM
             (
@@ -627,7 +629,7 @@ exports.recommendSkills = ( req, res, next ) ->
     getRecommendations req, res, next, statisticsQuery
 
 exports.recommendActions = ( req, res, next ) ->
-    logger.verbose 'Action Recommendations Reqest for %s in %j', req.params.user, req.params.names
+    logger.verbose '%s: Action Recommendations Reqest for %s in %j', req.id, req.params.user, req.params.names, {}
     statisticsQuery = "
         SELECT actions.Name, b1.Done, b2.Referenced FROM
             (
@@ -658,7 +660,7 @@ exports.recommendActions = ( req, res, next ) ->
     getRecommendations req, res, next, statisticsQuery
 
 exports.recommendActionTypes = ( req, res, next ) ->
-    logger.verbose 'ActionType Recommendations Reqest for %s in %j', req.params.user, req.params.names
+    logger.verbose '%s: ActionType Recommendations Reqest for %s in %j', req.id, req.params.user, req.params.names, {}
     statisticsQuery = "
         SELECT actionTypes.Name, SUM(b1.Done) as Done, SUM(b2.Referenced) as Referenced FROM
             (

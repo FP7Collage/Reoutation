@@ -1,12 +1,13 @@
 {
-	"name": "gaminomics-reputation",
-	"version": "0.0.0alpha",
-	"private": true,
-	"dependencies": {
-		"mysql": "~2.3.2",
-		"restify": "~2.8.1",
-		"q": "~1.0.1",
-		"yargs": "~1.2.2",
-		"winston": "~0.7.3"
-	}
+  "name": "gaminomics-reputation",
+  "version": "0.0.0alpha",
+  "private": true,
+  "dependencies": {
+    "connect-requestid": "^1.1.0",
+    "mysql": "~2.3.2",
+    "q": "~1.0.1",
+    "restify": "~2.8.1",
+    "winston": "~0.7.3",
+    "yargs": "~1.2.2"
+  }
 }
