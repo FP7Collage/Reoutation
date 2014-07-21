@@ -68,6 +68,7 @@ getCacheUser = ( UUID ) ->
 
 reqParam = ( req, next, p ) ->
     unless req.params[ p ]?
+        logger.silly '%s: Missing paramter %s!', req.id, p
         next new restify.MissingParameterError "'#{p}' is required!"
         return false
     return true
@@ -205,9 +206,9 @@ exports.getUserRank = ( req, res, next ) ->
 # json payload
 # {  }
 exports.performActivity = ( req, res, next ) ->
-    return unless reqParam( req, next, 'type' ) and reqParam( req, next, 'target' ) and reqParam( req, next, 'activator' )
+    return unless reqParam( req, next, 'type' ) and reqParam( req, next, 'target' ) and reqParam( req, next, 'activator' ) and reqParam( req, next, 'projectID' )
 
-    logger.verbose '%s: Activity performed: %s in %s by %s', req.id, req.params.type, req.params.target, req.params.activator
+    logger.verbose '%s: Activity performed: %s in %s by %j: %j', req.id, req.params.type, req.params.projectID, req.params.activator, req.params.target, {}
 
     abort = false
 
@@ -227,7 +228,7 @@ exports.performActivity = ( req, res, next ) ->
                 abort = true
                 return
             else if not userID
-                next new restify.InvalidArgumentError "Unknown user '#{req.params.activator}'"
+                next new restify.InvalidArgumentError "Unknown user '#{req.params.activator.id}'"
                 abort = true
                 return
             query "INSERT INTO `activities` SET ?", [{
