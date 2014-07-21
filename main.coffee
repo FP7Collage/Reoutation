@@ -40,6 +40,7 @@ server = restify.createServer({
 })
 server.use restify.queryParser()
 server.use restify.bodyParser()
+server.use require 'connect-requestid'
 server.get '/', (req, res, next) ->
     res.send 'Hello World'
     next()
