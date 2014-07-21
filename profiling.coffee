@@ -91,9 +91,8 @@ getRecommendations = ( req, res, next, queryString ) ->
 
     logger.verbose '%s: Getting recommendations for %s %s', req.id, req.params.user, req.params.names
 
-    Q(
-        getCacheUser req.params.user
-    ).then( ( userID ) ->
+    getCacheUser( req.params.user)
+    .then( ( userID ) ->
         return next new restify.InvalidArgumentError "Unknown user '#{req.params.user}'" unless userID
         query queryString, [ userID, userID, req.params.names ]
     )
@@ -145,7 +144,8 @@ exports.addUser = ( req, res, next ) ->
 exports.addSkill = ( req, res, next ) ->
     return unless reqParam( req, next, 'name' )
     logger.verbose '%s: Adding user %s', req.id, req.params.name
-    Q( getCacheItem 'skills', req.params.name ).then( (skillID) ->
+    getCacheItem( 'skills', req.params.name )
+    .then( (skillID) ->
         if not skillID
             query("INSERT INTO `skills` SET ?", {
                 Name: req.params.name
@@ -183,7 +183,7 @@ exports.getUserRank = ( req, res, next ) ->
     if req.projectID
         userRankQuery = " AND ui.Project = uo.Project AND ui.Project = " + connection.escape(req.projectID)
 
-    Q( getCacheUser req.params.user )
+    getCacheUser( req.params.user )
     .then( ( userID ) ->
         return next new restify.InvalidArgumentError "Unknown user '#{req.params.user}'" unless userID
         query userRankQuery, [ userID ]
@@ -280,7 +280,7 @@ exports.skillsDistribution = ( req, res, next ) ->
 
     if req.params.user
         logger.verbose '%s: Skill distribution query for %s', req.id, req.params.user
-        promise = Q( getCacheUser req.params.user )
+        promise = getCacheUser( req.params.user )
             .then( ( userID ) ->
                 return next new restify.InvalidArgumentError "Unknown user '#{req.params.user}'" unless userID
                 query distributionQuery, [ userID ]
@@ -362,7 +362,7 @@ exports.skillsContribution = ( req, res, next ) ->
         ORDER BY Skill, Count DESC"
 
     user_id = null
-    Q( getCacheUser req.params.user )
+    getCacheUser( req.params.user )
     .then( ( userID ) ->
         return next new restify.InvalidArgumentError "Unknown user '#{req.params.user}'" unless userID
         user_id = userID
@@ -428,7 +428,7 @@ exports.userNumber = ( req, res, next ) ->
             skills.ID = projectSkills.Skill AND projectSkills.Project = " + connection.escape(req.projectID)
     userNumberQuery += " GROUP BY skills.ID"
 
-    Q( query userNumberQuery )
+    query( userNumberQuery )
     .then( (wat) ->
         result = {}
         if wat.length > 0
