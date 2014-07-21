@@ -73,6 +73,15 @@ reqParam = ( req, next, p ) ->
         return false
     return true
 
+reqParamPromise = ( req, res, key ) ->
+    return ( val ) ->
+        if val
+            return val
+        param = req.params[key];
+        logger.debug '%s: Invalid value "%s" for paramter %s!', req.id, param, key
+        res.send new restify.InvalidArgumentError "Unknown #{key} '#{param}'"
+        throw new Error("Invalid argument!");
+
 failurePromise = ( req, res, action ) ->
     return ( errorMsg ) ->
 
@@ -84,6 +93,8 @@ failurePromise = ( req, res, action ) ->
 
         return undefined
 
+getUser = ( req, res ) -> getCacheUser( req.params.user ).then( reqParamPromise req, res, 'user' )
+
 
 getRecommendations = ( req, res, next, queryString ) ->
     return unless reqParam( req, next, 'user' )
@@ -91,9 +102,8 @@ getRecommendations = ( req, res, next, queryString ) ->
 
     logger.verbose '%s: Getting recommendations for %s %s', req.id, req.params.user, req.params.names
 
-    getCacheUser( req.params.user)
+    getUser( req, res )
     .then( ( userID ) ->
-        return next new restify.InvalidArgumentError "Unknown user '#{req.params.user}'" unless userID
         query queryString, [ userID, userID, req.params.names ]
     )
     .then( (wat) ->
@@ -183,9 +193,8 @@ exports.getUserRank = ( req, res, next ) ->
     if req.projectID
         userRankQuery = " AND ui.Project = uo.Project AND ui.Project = " + connection.escape(req.projectID)
 
-    getCacheUser( req.params.user )
+    getUser( req, res )
     .then( ( userID ) ->
-        return next new restify.InvalidArgumentError "Unknown user '#{req.params.user}'" unless userID
         query userRankQuery, [ userID ]
     )
     .then( (wat) ->
@@ -214,7 +223,7 @@ exports.performActivity = ( req, res, next ) ->
             getCacheItem 'skills', skill
             getCacheUser req.params.activator.id
         ]).spread( ( actionID, skillID, userID ) ->
-            logger.silly "%s: , req.idGot IDs: %j", arguments, {}
+            logger.silly "%s: Got IDs: %j", req.id, arguments, {}
             if not actionID
                 next new restify.InvalidArgumentError "Unknown action type '#{req.params.type}'"
                 abort = true
@@ -280,9 +289,8 @@ exports.skillsDistribution = ( req, res, next ) ->
 
     if req.params.user
         logger.verbose '%s: Skill distribution query for %s', req.id, req.params.user
-        promise = getCacheUser( req.params.user )
+        promise = getUser( req, res )
             .then( ( userID ) ->
-                return next new restify.InvalidArgumentError "Unknown user '#{req.params.user}'" unless userID
                 query distributionQuery, [ userID ]
             )
     else
@@ -362,9 +370,8 @@ exports.skillsContribution = ( req, res, next ) ->
         ORDER BY Skill, Count DESC"
 
     user_id = null
-    getCacheUser( req.params.user )
+    getUser( req, res )
     .then( ( userID ) ->
-        return next new restify.InvalidArgumentError "Unknown user '#{req.params.user}'" unless userID
         user_id = userID
         query distributionQuery, [ userID ]
     ).then( (wat) ->
