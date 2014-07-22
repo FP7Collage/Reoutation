@@ -269,7 +269,10 @@ exports.skillsDistribution = ( req, res, next ) ->
 
     distributionQuery = "
         SELECT
-            skills.Name as Skill, actions.Name as Action, COUNT(*) as Count
+            skills.Name as Skill,
+            actions.Name as Action,
+            COUNT(*) as Count,
+            users.UUID as User
         FROM
             activities
         JOIN actions ON
@@ -282,10 +285,16 @@ exports.skillsDistribution = ( req, res, next ) ->
     if req.params.skills and req.params.skills instanceof Array
         req.params.skills = req.params.skills.map (skill) -> connection.escape(skill)
         distributionQuery += " AND skills.Name IN ('" + req.params.skills.join("','") + "')"
+
     if req.params.user
         distributionQuery += " JOIN users ON activities.User = users.ID AND User = ?"
-    distributionQuery += " GROUP BY
-            skills.ID, activities.Action, activities.User"
+    else
+        distributionQuery += " LEFT JOIN users ON activities.User = users.ID"
+
+    distributionQuery += ' GROUP BY
+            skills.ID, activities.Action, activities.User
+        ORDER BY
+            activities.Skill, activities.Date DESC'
 
     if req.params.user
         logger.verbose '%s: Skill distribution query for %s', req.id, req.params.user
@@ -310,13 +319,16 @@ exports.skillsDistribution = ( req, res, next ) ->
                     name: name
                     count: 0
                     fraction: 0
-                    # Competitive
-                    rank: 0 # FIXME
-                    contribution: 0 # FIXME
-                    # Collaborative
-                    contributors: 0
+                    contributors: {}
                     types: {}
                     fractions: {}
+                }
+
+            getContributor = ( skill, guid ) ->
+                return skill.contributors[ guid ] ||= {
+                    guid
+                    count: 0
+                    actions: {}
                 }
 
             for row in wat
@@ -327,7 +339,10 @@ exports.skillsDistribution = ( req, res, next ) ->
                     skill.types[action] = (skill.types[action] || 0) + row.Count
                     sums[name] = (sums[name] || 0) + row.Count
                     total += row.Count
-                    skill.contributors += 1
+                    if row.User
+                        user = getContributor(skill, row.User)
+                        user.count += row.Count
+                        user.actions[ action ] = row.Count
 
             for name, data of skills
                 sum = sums[name]
@@ -335,6 +350,7 @@ exports.skillsDistribution = ( req, res, next ) ->
                 data.fraction = ( Math.floor( (sum / total) * 100 ) / 100 ) || 0
                 for action, count of data.types
                     data.fractions[action] = Math.floor( (count / sum) * 100 ) / 100
+                data.contributors = (user for guid, user of data.contributors)
 
             results = (skill for name,skill of skills)
 
