@@ -331,26 +331,33 @@ exports.skillsDistribution = ( req, res, next ) ->
                     actions: {}
                 }
 
+            getAction = ( skill, action ) ->
+                return skill.types[ action ] ||= {
+                    count: 0
+                    contributors: []
+                }
+
             for row in wat
                 name = row.Skill
                 action = row.Action
                 skill = getSkill name
                 if action
-                    skill.types[action] = (skill.types[action] || 0) + row.Count
+                    action_ = getAction skill, action
+                    action_.count += row.Count
                     sums[name] = (sums[name] || 0) + row.Count
                     total += row.Count
                     if row.User
                         user = getContributor(skill, row.User)
                         user.count += row.Count
                         user.actions[ action ] = row.Count
+                        action_.contributors.push row.User
 
             for name, data of skills
                 sum = sums[name]
                 data.count = sum if sum
                 data.fraction = ( Math.floor( (sum / total) * 100 ) / 100 ) || 0
-                for action, count of data.types
-                    data.fractions[action] = Math.floor( (count / sum) * 100 ) / 100
-                data.contributors = (user for guid, user of data.contributors)
+                for action, type of data.types
+                    data.fractions[action] = Math.floor( (type.count / sum) * 100 ) / 100
 
             results = (skill for name,skill of skills)
 
