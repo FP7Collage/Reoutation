@@ -153,7 +153,7 @@ exports.addUser = ( req, res, next ) ->
 
 exports.addSkill = ( req, res, next ) ->
     return unless reqParam( req, next, 'name' )
-    logger.verbose '%s: Adding user %s', req.id, req.params.name
+    logger.verbose '%s: Adding skill %s', req.id, req.params.name
     getCacheItem( 'skills', req.params.name )
     .then( (skillID) ->
         if not skillID
@@ -175,6 +175,25 @@ exports.addSkill = ( req, res, next ) ->
         res.send 204
     )
     .fail( failurePromise req, res, 'add skill' )
+    .finally(next)
+    .done()
+
+exports.deleteSkill = ( req, res, next ) ->
+    return unless reqParam( req, next, 'name' )
+    logger.verbose '%s: Removing skill %s from project', req.id, req.params.name
+    getCacheItem( 'skills', req.params.name )
+    .then( (skillID) ->
+        query("DELETE FROM `projectSkills` WHERE ? AND ?", [{
+            Project: req.projectID || null
+            }, {
+            Skill: skillID
+        }])
+    )
+    .then( (wat) ->
+        logger.debug '%s: Removed skill', req.id
+        res.send 204
+    )
+    .fail( failurePromise req, res, 'remove skill' )
     .finally(next)
     .done()
 
