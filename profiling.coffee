@@ -14,6 +14,7 @@ connect = () ->
         dbVars = dbString.split(':')
     else
         dbVars = ['localhost', 3306]
+    logger.info 'Connecting to DB on %s:%d', dbVars[0], dbVars[1]
 
     connection = mysql.createPool
         host: dbVars[0],
