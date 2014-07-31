@@ -170,6 +170,26 @@ exports.addSkill = ( req, res, next ) ->
             Project: req.projectID || null
             Skill: wat.insertId
         })
+        insertQuery = "
+        INSERT INTO `activities` (Project, User, Action,Skill, Reference, Date)
+            SELECT
+                Project, users.ID as User, actionMap.Action as Action, " + wat.insertId + ", Reference, Date
+            FROM
+                allactivities
+            JOIN users ON allactivities.User = users.UUID
+            JOIN actionMap ON allactivities.`Action` = actionMap.Name
+            WHERE ? AND ?"
+        query(insertQuery, [{
+            Project: req.projectID || null }, {
+            Skill: req.params.name
+        }])
+        wat
+    )
+    .then( (wat) ->
+        query("DELETE FROM `allactivities` WHERE ? AND ?", [{
+            Project: req.projectID || null }, {
+            Skill: req.params.name
+        }])
     )
     .then( (wat) ->
         logger.debug '%s: Added skill', req.id
