@@ -10,6 +10,7 @@ module.exports = new (winston.Logger)({
 		new(winston.transports.File)({
 			level: 'silly',
 			filename: 'logs/' + now.getUTCFullYear() + '-' + now.getUTCMonth() + '-' + now.getUTCDay() + '.log',
+			maxsize: 10000000,
 			timestamp: true,
 			json: false
 		})
