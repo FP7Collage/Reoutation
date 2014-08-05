@@ -247,25 +247,17 @@ exports.getUserRank = ( req, res, next ) ->
     .finally(next)
     .done()
 
-# /api/activities/perform
-# json payload
-# {  }
-exports.performActivity = ( req, res, next ) ->
-    return unless reqParam( req, next, 'type' ) and reqParam( req, next, 'target' ) and reqParam( req, next, 'activator' ) and reqParam( req, next, 'projectID' )
-
-    logger.verbose '%s: Activity performed: %s in %s by %j: %j', req.id, req.params.type, req.params.projectID, req.params.activator, req.params.target, {}
-
+saveActivity = ( type, skills, reference, user_id, projectID, req, res, next ) ->
     abort = false
-
-    butts = for skill in req.params.target.tags
+    butts = for skill in skills
         Q.all([
-            getCacheAction req.params.target.type
+            getCacheAction type
             getCacheItem 'skills', skill
-            getCacheUser req.params.activator.id
+            getCacheUser user_id
         ]).spread( ( actionID, skillID, userID ) ->
             logger.silly "%s: Got IDs: %j", req.id, arguments, {}
             if not actionID
-                next new restify.InvalidArgumentError "Unknown action type '#{req.params.type}'"
+                next new restify.InvalidArgumentError "Unknown action type '#{type}'"
                 abort = true
                 return
             else if not skillID
@@ -273,26 +265,26 @@ exports.performActivity = ( req, res, next ) ->
                 abort = true
                 return
             else if not userID
-                next new restify.InvalidArgumentError "Unknown user '#{req.params.activator.id}'"
+                next new restify.InvalidArgumentError "Unknown user '#{user_id}'"
                 abort = true
                 return
             query "INSERT INTO `activities` SET ?", [{
-                Project: req.params.projectID
+                Project: projectID
                 User: userID
                 Action: actionID
                 Skill: skillID
-                Reference: req.params.target.id
+                Reference: reference
             }]
         )
     Q.all(butts)
     .then( (wat) ->
         if abort
             query "INSERT INTO `allactivities` SET ?", [{
-                Project: req.params.projectID
-                User: req.params.activator.id
-                Action: req.params.target.type
-                Skill: req.params.target.tags
-                Reference: req.params.target.id
+                Project: projectID
+                User: user_id
+                Action: type
+                Skill: skills
+                Reference: reference
                 Blob: JSON.stringify req.params
                 }]
             return
@@ -302,6 +294,20 @@ exports.performActivity = ( req, res, next ) ->
     .fail( failurePromise req, res, 'insert activity' )
     .finally(next)
     .done()
+
+# /api/activities/perform
+# json payload
+# {  }
+exports.performActivity = ( req, res, next ) ->
+    return unless reqParam( req, next, 'type' ) and reqParam( req, next, 'target' ) and reqParam( req, next, 'activator' ) and reqParam( req, next, 'projectID' )
+
+    logger.verbose '%s: Activity performed: %s in %s by %j: %j', req.id, req.params.type, req.params.projectID, req.params.activator, req.params.target, {}
+
+    type = req.params.type
+    if type == 'create_post'
+        type = req.params.target.type
+
+    saveActivity type, req.params.target.tags, req.params.target.id, req.params.activator.id, req.params.projectID, req, res, next
 
 # FIXME: actions.actionType = 3 OR actions.ID = 14 seems very specific to logquest, needs some redesign
 exports.skillsDistribution = ( req, res, next ) ->
