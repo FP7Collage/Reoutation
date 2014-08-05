@@ -13,27 +13,24 @@ jsonClient = restify.createJsonClient
     url: argv.gaminomics
     version: '*'
 
+listenersResponse = (type, err, req, res, obj) ->
+    if err
+        logger.error 'Could not regigister ' + type + ' listener on Gaminomics!', err
+        # FIXME: Should this be a fatal error?
+    else
+        logger.verbose 'Registered ' + type + ' listener on Gaminomics!'
+
 jsonClient.post '/listeners', {
     "id": "reputationEvents",
     "type": "Event",
     "callback": argv.reputations + "/activities/perform"
-}, (err, req, res, obj) ->
-    if err
-        logger.error 'Could not regigister \'Event\' listener on Gaminomics!', err
-        # FIXME: Should this be a fatal error?
-    else
-        logger.verbose 'Registered \'Event\' listener on Gaminomics!'
+}, listenersResponse.bind null, "Event"
 
 jsonClient.post '/listeners', {
     "id": "reputationUsers",
     "type": "UserCreate",
     "callback": argv.reputations + "/users"
-}, (err, req, res, obj) ->
-    if err
-        logger.error 'Could not regigister \'UserCreate\' listener on Gaminomics!', err
-        # FIXME: Should this be a fatal error?
-    else
-        logger.verbose 'Registered \'UserCreate\' listener on Gaminomics!'
+}, listenersResponse.bind null, "UserCreate"
 
 server = restify.createServer({
     name: 'Reputation Service'
