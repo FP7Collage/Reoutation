@@ -309,6 +309,12 @@ exports.performActivity = ( req, res, next ) ->
 
     saveActivity type, req.params.target.tags, req.params.target.id, req.params.activator.id, req.params.projectID, req, res, next
 
+exports.activityChange = ( req, res, next ) ->
+    return unless reqParam( req, next, 'initialEvent' ) and req.params.projectID
+
+    if req.params.object.id.charAt(0) == 'g' and req.params.changed.state and req.params.changed.state == 1
+        saveActivity 'goal_complete', req.params.object.tags, req.params.initialEvent.target, req.params.initialEvent.activator, req.params.projectID, req, res, next
+
 # FIXME: actions.actionType = 3 OR actions.ID = 14 seems very specific to logquest, needs some redesign
 exports.skillsDistribution = ( req, res, next ) ->
     connect() unless connection?
