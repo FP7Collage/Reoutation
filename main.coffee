@@ -32,6 +32,12 @@ jsonClient.post '/listeners', {
     "callback": argv.reputations + "/users"
 }, listenersResponse.bind null, "UserCreate"
 
+jsonClient.post '/listeners', {
+    "id": "reputationActivityChange",
+    "type": "ActivityChange",
+    "callback": argv.reputations + "/activities/change"
+}, listenersResponse.bind null, "ActivityChange"
+
 server = restify.createServer({
     name: 'Reputation Service'
 })
@@ -54,6 +60,7 @@ server.post '/users', profiling.addUser
 server.get '/users/:user/rank', profiling.getUserRank
 server.get '/users/contributionStatistics', profiling.getContributionStatistics
 server.post '/activities/perform', profiling.performActivity
+server.post '/activities/change', profiling.activityChange
 server.post '/skills', profiling.addSkill
 server.del '/skills', profiling.deleteSkill
 server.get '/skills/distribution', profiling.skillsDistribution
