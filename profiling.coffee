@@ -53,7 +53,7 @@ getCacheAction = ( name ) ->
         logger.silly 'Cache hit for actions["%s"]', name
         return Q( cacheItem )
     logger.silly 'Cache miss for actions["%s"]', name
-    query( 'SELECT `Action` FROM actionMap WHERE `Name` = ?', [ name ] ).then (results) ->
+    query( 'SELECT Action FROM (SELECT Action, Name FROM actionMap UNION SELECT ID, Name FROM actions ) as t1 WHERE `Name` = ?', [ name ] ).then (results) ->
         logger.silly "Got action: %j", results, {}
         cache[ 'actions' ][ name ] = results[0]?.Action || false
 
