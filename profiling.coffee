@@ -252,15 +252,17 @@ exports.getActivityLevels = ( req, res, next ) ->
     connect() unless connection?
     logger.verbose '%s: Ranks reqest', req.id
     ranksQuery = "
-        SELECT actions.Name as Action, Reference FROM activities
+        SELECT actions.Name as Action, skills.Name as Skill, Reference FROM activities
         JOIN users ON activities.User = users.ID
         JOIN actions ON activities.Action = actions.ID
-        WHERE Project = ? "
+        JOIN projectSkills ON activities.Skill = projectSkills.Skill AND projectSkills.Project = ?
+        JOIN skills ON activities.Skill = skills.ID
+        WHERE 1 = 1 "
     if req.params.dateFrom
         ranksQuery += " AND activities.Date >= " + connection.escape(req.params.dateFrom)
     if req.params.dateTo
         ranksQuery += " AND activities.Date <= " + connection.escape(req.params.dateTo)
-    ranksQuery += " GROUP BY activities.Action, Reference, activities.User"
+    ranksQuery += " GROUP BY skills.ID, activities.Action, Reference, activities.User"
 
     query( ranksQuery, [ req.projectID ] )
     .then( (wat) ->
@@ -268,8 +270,10 @@ exports.getActivityLevels = ( req, res, next ) ->
         if wat.length > 0
             refs = {}
             for row in wat
-                refs[row.Reference] = refs[row.Reference] || { Reference: row.Reference, Score:{} }
+                refs[row.Reference] = refs[row.Reference] || { Reference: row.Reference, Score:{}, Skills: {} }
+                refs[row.Reference].Skills[row.Skill] = row.Skill
                 refs[row.Reference].Score[row.Action] = (refs[row.Reference].Score[row.Action] || 0) + 1
+            (ref.Skills = (skill for __,skill of ref.Skills) for _,ref of refs)
             results = (ref for _,ref of refs)
         res.send 200, results
     )
