@@ -247,6 +247,36 @@ exports.getUserRank = ( req, res, next ) ->
     .finally(next)
     .done()
 
+exports.getActivityLevels = ( req, res, next ) ->
+    return unless req.projectID
+    connect() unless connection?
+    logger.verbose '%s: Ranks reqest', req.id
+    ranksQuery = "
+        SELECT actions.Name as Action, Reference FROM activities
+        JOIN users ON activities.User = users.ID
+        JOIN actions ON activities.Action = actions.ID
+        WHERE Project = ? "
+    if req.params.dateFrom
+        ranksQuery += " AND activities.Date >= " + connection.escape(req.params.dateFrom)
+    if req.params.dateTo
+        ranksQuery += " AND activities.Date <= " + connection.escape(req.params.dateTo)
+    ranksQuery += " GROUP BY activities.Action, Reference, activities.User"
+
+    query( ranksQuery, [ req.projectID ] )
+    .then( (wat) ->
+        results = []
+        if wat.length > 0
+            refs = {}
+            for row in wat
+                refs[row.Reference] = refs[row.Reference] || { Reference: row.Reference, Score:{} }
+                refs[row.Reference].Score[row.Action] = (refs[row.Reference].Score[row.Action] || 0) + 1
+            results = (ref for _,ref of refs)
+        res.send 200, results
+    )
+    .fail( failurePromise req, res, 'get ranks' )
+    .finally(next)
+    .done()
+
 saveActivity = ( type, skills, reference, user_id, projectID, req, res, next ) ->
     abort = false
     butts = for skill in skills

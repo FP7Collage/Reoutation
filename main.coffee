@@ -56,17 +56,22 @@ server.use require 'connect-requestid'
 server.get '/', (req, res, next) ->
     res.send 'Hello World'
     next()
+
 server.post '/users', profiling.addUser
 server.get '/users/:user/rank', profiling.getUserRank
 server.get '/users/contributionStatistics', profiling.getContributionStatistics
+
 server.post '/activities/perform', profiling.performActivity
 server.post '/activities/change', profiling.activityChange
+server.get '/activities/levels', profiling.getActivityLevels
+
 server.post '/skills', profiling.addSkill
 server.del '/skills', profiling.deleteSkill
 server.get '/skills/distribution', profiling.skillsDistribution
 server.get '/skills/contribution', profiling.skillsContribution
 server.get '/skills/userNumber', profiling.userNumber
 server.get '/skills/counts', profiling.skillsCounts
+
 server.get '/skills/recommend', profiling.recommendSkills
 server.get '/actions/recommend', profiling.recommendActions
 server.get '/actionTypes/recommend', profiling.recommendActionTypes
