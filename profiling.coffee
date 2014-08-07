@@ -53,7 +53,7 @@ getCacheAction = ( name ) ->
         logger.silly 'Cache hit for actions["%s"]', name
         return Q( cacheItem )
     logger.silly 'Cache miss for actions["%s"]', name
-    query( 'SELECT `Action` FROM actionMap WHERE `Name` = ?', [ name ] ).then (results) ->
+    query( 'SELECT Action FROM (SELECT Action, Name FROM actionMap UNION SELECT ID, Name FROM actions ) as t1 WHERE `Name` = ?', [ name ] ).then (results) ->
         logger.silly "Got action: %j", results, {}
         cache[ 'actions' ][ name ] = results[0]?.Action || false
 
@@ -247,25 +247,51 @@ exports.getUserRank = ( req, res, next ) ->
     .finally(next)
     .done()
 
-# /api/activities/perform
-# json payload
-# {  }
-exports.performActivity = ( req, res, next ) ->
-    return unless reqParam( req, next, 'type' ) and reqParam( req, next, 'target' ) and reqParam( req, next, 'activator' ) and reqParam( req, next, 'projectID' )
+exports.getActivityLevels = ( req, res, next ) ->
+    return unless req.projectID
+    connect() unless connection?
+    logger.verbose '%s: Ranks reqest', req.id
+    ranksQuery = "
+        SELECT actions.Name as Action, skills.Name as Skill, Reference FROM activities
+        JOIN users ON activities.User = users.ID
+        JOIN actions ON activities.Action = actions.ID
+        JOIN projectSkills ON activities.Skill = projectSkills.Skill AND projectSkills.Project = ?
+        JOIN skills ON activities.Skill = skills.ID
+        WHERE 1 = 1 "
+    if req.params.dateFrom
+        ranksQuery += " AND activities.Date >= " + connection.escape(req.params.dateFrom)
+    if req.params.dateTo
+        ranksQuery += " AND activities.Date <= " + connection.escape(req.params.dateTo)
+    ranksQuery += " GROUP BY skills.ID, activities.Action, Reference, activities.User"
 
-    logger.verbose '%s: Activity performed: %s in %s by %j: %j', req.id, req.params.type, req.params.projectID, req.params.activator, req.params.target, {}
+    query( ranksQuery, [ req.projectID ] )
+    .then( (wat) ->
+        results = []
+        if wat.length > 0
+            refs = {}
+            for row in wat
+                refs[row.Reference] = refs[row.Reference] || { Reference: row.Reference, Score:{}, Skills: {} }
+                refs[row.Reference].Skills[row.Skill] = row.Skill
+                refs[row.Reference].Score[row.Action] = (refs[row.Reference].Score[row.Action] || 0) + 1
+            (ref.Skills = (skill for __,skill of ref.Skills) for _,ref of refs)
+            results = (ref for _,ref of refs)
+        res.send 200, results
+    )
+    .fail( failurePromise req, res, 'get ranks' )
+    .finally(next)
+    .done()
 
+saveActivity = ( type, skills, reference, user_id, projectID, req, res, next ) ->
     abort = false
-
-    butts = for skill in req.params.target.tags
+    butts = for skill in skills
         Q.all([
-            getCacheAction req.params.target.type
+            getCacheAction type
             getCacheItem 'skills', skill
-            getCacheUser req.params.activator.id
+            getCacheUser user_id
         ]).spread( ( actionID, skillID, userID ) ->
             logger.silly "%s: Got IDs: %j", req.id, arguments, {}
             if not actionID
-                next new restify.InvalidArgumentError "Unknown action type '#{req.params.type}'"
+                next new restify.InvalidArgumentError "Unknown action type '#{type}'"
                 abort = true
                 return
             else if not skillID
@@ -273,26 +299,26 @@ exports.performActivity = ( req, res, next ) ->
                 abort = true
                 return
             else if not userID
-                next new restify.InvalidArgumentError "Unknown user '#{req.params.activator.id}'"
+                next new restify.InvalidArgumentError "Unknown user '#{user_id}'"
                 abort = true
                 return
             query "INSERT INTO `activities` SET ?", [{
-                Project: req.params.projectID
+                Project: projectID
                 User: userID
                 Action: actionID
                 Skill: skillID
-                Reference: req.params.target.id
+                Reference: reference
             }]
         )
     Q.all(butts)
     .then( (wat) ->
         if abort
             query "INSERT INTO `allactivities` SET ?", [{
-                Project: req.params.projectID
-                User: req.params.activator.id
-                Action: req.params.target.type
-                Skill: req.params.target.tags
-                Reference: req.params.target.id
+                Project: projectID
+                User: user_id
+                Action: type
+                Skill: skills
+                Reference: reference
                 Blob: JSON.stringify req.params
                 }]
             return
@@ -302,6 +328,26 @@ exports.performActivity = ( req, res, next ) ->
     .fail( failurePromise req, res, 'insert activity' )
     .finally(next)
     .done()
+
+# /api/activities/perform
+# json payload
+# {  }
+exports.performActivity = ( req, res, next ) ->
+    return unless reqParam( req, next, 'type' ) and reqParam( req, next, 'target' ) and reqParam( req, next, 'activator' ) and reqParam( req, next, 'projectID' )
+
+    logger.verbose '%s: Activity performed: %s in %s by %j: %j', req.id, req.params.type, req.params.projectID, req.params.activator, req.params.target, {}
+
+    type = req.params.type
+    if type == 'create_post'
+        type = req.params.target.type
+
+    saveActivity type, req.params.target.tags, req.params.target.id, req.params.activator.id, req.params.projectID, req, res, next
+
+exports.activityChange = ( req, res, next ) ->
+    return unless reqParam( req, next, 'initialEvent' ) and req.params.projectID
+
+    if req.params.object.id.charAt(0) == 'g' and req.params.changed.state and req.params.changed.state == 1
+        saveActivity 'goal_complete', req.params.object.tags, req.params.initialEvent.target, req.params.initialEvent.activator, req.params.projectID, req, res, next
 
 # FIXME: actions.actionType = 3 OR actions.ID = 14 seems very specific to logquest, needs some redesign
 exports.skillsDistribution = ( req, res, next ) ->

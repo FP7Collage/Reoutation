@@ -13,27 +13,30 @@ jsonClient = restify.createJsonClient
     url: argv.gaminomics
     version: '*'
 
+listenersResponse = (type, err, req, res, obj) ->
+    if err
+        logger.error 'Could not regigister ' + type + ' listener on Gaminomics!', err
+        # FIXME: Should this be a fatal error?
+    else
+        logger.verbose 'Registered ' + type + ' listener on Gaminomics!'
+
 jsonClient.post '/listeners', {
     "id": "reputationEvents",
     "type": "Event",
     "callback": argv.reputations + "/activities/perform"
-}, (err, req, res, obj) ->
-    if err
-        logger.error 'Could not regigister \'Event\' listener on Gaminomics!', err
-        # FIXME: Should this be a fatal error?
-    else
-        logger.verbose 'Registered \'Event\' listener on Gaminomics!'
+}, listenersResponse.bind null, "Event"
 
 jsonClient.post '/listeners', {
     "id": "reputationUsers",
     "type": "UserCreate",
     "callback": argv.reputations + "/users"
-}, (err, req, res, obj) ->
-    if err
-        logger.error 'Could not regigister \'UserCreate\' listener on Gaminomics!', err
-        # FIXME: Should this be a fatal error?
-    else
-        logger.verbose 'Registered \'UserCreate\' listener on Gaminomics!'
+}, listenersResponse.bind null, "UserCreate"
+
+jsonClient.post '/listeners', {
+    "id": "reputationActivityChange",
+    "type": "ActivityChange",
+    "callback": argv.reputations + "/activities/change"
+}, listenersResponse.bind null, "ActivityChange"
 
 server = restify.createServer({
     name: 'Reputation Service'
@@ -53,16 +56,22 @@ server.use require 'connect-requestid'
 server.get '/', (req, res, next) ->
     res.send 'Hello World'
     next()
+
 server.post '/users', profiling.addUser
 server.get '/users/:user/rank', profiling.getUserRank
 server.get '/users/contributionStatistics', profiling.getContributionStatistics
+
 server.post '/activities/perform', profiling.performActivity
+server.post '/activities/change', profiling.activityChange
+server.get '/activities/levels', profiling.getActivityLevels
+
 server.post '/skills', profiling.addSkill
 server.del '/skills', profiling.deleteSkill
 server.get '/skills/distribution', profiling.skillsDistribution
 server.get '/skills/contribution', profiling.skillsContribution
 server.get '/skills/userNumber', profiling.userNumber
 server.get '/skills/counts', profiling.skillsCounts
+
 server.get '/skills/recommend', profiling.recommendSkills
 server.get '/actions/recommend', profiling.recommendActions
 server.get '/actionTypes/recommend', profiling.recommendActionTypes
