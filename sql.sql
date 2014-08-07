@@ -27,14 +27,15 @@ CREATE TABLE IF NOT EXISTS `actionmap` (
   CONSTRAINT `FK__actions_map` FOREIGN KEY (`Action`) REFERENCES `actions` (`ID`)
 ) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
--- Dumping data for table reputation.actionmap: ~5 rows (approximately)
+-- Dumping data for table reputation.actionmap: ~6 rows (approximately)
 /*!40000 ALTER TABLE `actionmap` DISABLE KEYS */;
 INSERT INTO `actionmap` (`ID`, `Action`, `Name`) VALUES
 	(1, 5, 'Text'),
 	(2, 6, 'Image'),
 	(3, 8, 'Video'),
 	(5, 7, 'Audio'),
-	(6, 14, 'Link');
+	(6, 14, 'Link'),
+  (7, 9, 'approve');
 /*!40000 ALTER TABLE `actionmap` ENABLE KEYS */;
 
 
@@ -50,7 +51,7 @@ CREATE TABLE IF NOT EXISTS `actions` (
   CONSTRAINT `Action?Category` FOREIGN KEY (`ActionType`) REFERENCES `actiontypes` (`ID`)
 ) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
--- Dumping data for table reputation.actions: ~15 rows (approximately)
+-- Dumping data for table reputation.actions: ~16 rows (approximately)
 /*!40000 ALTER TABLE `actions` DISABLE KEYS */;
 INSERT INTO `actions` (`ID`, `ActionType`, `Name`) VALUES
 	(1, 1, 'Listen'),
@@ -67,7 +68,8 @@ INSERT INTO `actions` (`ID`, `ActionType`, `Name`) VALUES
 	(12, 5, 'Gift'),
 	(13, 5, 'Assign'),
 	(14, 5, 'Broadcast'),
-	(15, 5, 'Private Share');
+	(15, 5, 'Private Share'),
+  (16, 6, 'goal_complete');
 /*!40000 ALTER TABLE `actions` ENABLE KEYS */;
 
 
@@ -270,43 +272,3 @@ CREATE TABLE IF NOT EXISTS `userstats` (
 -- Dumping data for table reputation.userstats: ~0 rows (approximately)
 /*!40000 ALTER TABLE `userstats` DISABLE KEYS */;
 /*!40000 ALTER TABLE `userstats` ENABLE KEYS */;
-
-
--- Dumping structure for trigger reputation.activity_insert
-DROP TRIGGER IF EXISTS `activity_insert`;
-SET @OLDTMP_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO';
-DELIMITER //
-CREATE TRIGGER `activity_insert` AFTER INSERT ON `activities` FOR EACH ROW BEGIN
-		INSERT INTO userSkills (User, Skill, Action, Count) VALUES (NEW.User, NEW.Skill, NEW.Action, 1) ON DUPLICATE KEY UPDATE Count = Count + 1;
-
-		UPDATE userSkills, (
-			SELECT User, Action, Skill
-			FROM activities
-			WHERE Reference = NEW.Reference
-				AND User != NEW.User
-				AND Action IN (
-					SELECT ID
-					FROM actions
-					WHERE actions.ActionType = 3
-				)
-				LIMIT 1
-			) as referencedRow
-		SET Rating = Rating + 1
-		WHERE userSkills.User = referencedRow.User
-			AND userSkills.Skill = referencedRow.Skill
-			AND userSkills.Action = referencedRow.Action;
-
-		UPDATE userSkills, (
-			SELECT Skill, Action, AVG(Count) as avgCount, AVG(Rating) as avgRating
-			FROM userSkills
-			GROUP BY Skill, Action
-		) as avg
-		SET PDV = (Count/avgCount + IFNULL(Rating/avgRating, 1))
-		WHERE userSkills.Skill = avg.Skill
-			AND userSkills.Action = avg.Action;
-	END//
-DELIMITER ;
-SET SQL_MODE=@OLDTMP_SQL_MODE;
-/*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;
-/*!40014 SET FOREIGN_KEY_CHECKS=IF(@OLD_FOREIGN_KEY_CHECKS IS NULL, 1, @OLD_FOREIGN_KEY_CHECKS) */;
-/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
