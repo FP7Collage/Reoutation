@@ -348,7 +348,8 @@ exports.activityChange = ( req, res, next ) ->
 
     if req.params.object.id.charAt(0) == 'g' and req.params.changed.state and req.params.changed.state == 1
         saveActivity 'goal_complete', req.params.object.tags, req.params.initialEvent.target, req.params.initialEvent.activator, req.params.projectID, req, res, next
-
+    else
+        res.send 204
 # FIXME: actions.actionType = 3 OR actions.ID = 14 seems very specific to logquest, needs some redesign
 exports.skillsDistribution = ( req, res, next ) ->
     connect() unless connection?
