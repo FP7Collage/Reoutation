@@ -248,7 +248,9 @@ exports.getUserRank = ( req, res, next ) ->
     .done()
 
 exports.getActivityLevels = ( req, res, next ) ->
-    return unless req.projectID
+    if not req.projectID
+         next new restify.MissingParameterError "projectID is required!"
+         return false
     connect() unless connection?
     logger.verbose '%s: Ranks reqest', req.id
     ranksQuery = "
