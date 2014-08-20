@@ -254,7 +254,7 @@ exports.getActivityLevels = ( req, res, next ) ->
     connect() unless connection?
     logger.verbose '%s: Ranks reqest', req.id
     ranksQuery = "
-        SELECT actions.Name as Action, skills.Name as Skill, Reference FROM activities
+        SELECT users.UUID as User, actions.Name as Action, skills.Name as Skill, Reference FROM activities
         JOIN users ON activities.User = users.ID
         JOIN actions ON activities.Action = actions.ID
         JOIN projectSkills ON activities.Skill = projectSkills.Skill AND projectSkills.Project = ?
@@ -274,7 +274,10 @@ exports.getActivityLevels = ( req, res, next ) ->
             for row in wat
                 refs[row.Reference] = refs[row.Reference] || { Reference: row.Reference, Score:{}, Skills: {} }
                 refs[row.Reference].Skills[row.Skill] = row.Skill
-                refs[row.Reference].Score[row.Action] = (refs[row.Reference].Score[row.Action] || 0) + 1
+
+                refs[row.Reference].Score[row.Action] = refs[row.Reference].Score[row.Action] || []
+                refs[row.Reference].Score[row.Action].push row.User
+
             (ref.Skills = (skill for __,skill of ref.Skills) for _,ref of refs)
             results = (ref for _,ref of refs)
         res.send 200, results
