@@ -69,7 +69,9 @@ INSERT INTO `actions` (`ID`, `ActionType`, `Name`) VALUES
 	(13, 5, 'Assign'),
 	(14, 5, 'Broadcast'),
 	(15, 5, 'Private Share'),
-  (16, 6, 'goal_complete');
+  (16, 6, 'goal_complete'),
+  (17, 6, 'comment_goal_complete');
+  (18, 6, 'team_goal_complete'),
 /*!40000 ALTER TABLE `actions` ENABLE KEYS */;
 
 
