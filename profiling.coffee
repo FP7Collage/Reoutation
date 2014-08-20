@@ -22,6 +22,7 @@ connect = () ->
         user: 'reputation',
         password: 'reputation',
         database: 'reputation',
+        insecureAuth: true,
         connectionLimit: 10
 
 connect()
