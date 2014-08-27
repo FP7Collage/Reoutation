@@ -30,12 +30,13 @@ CREATE TABLE IF NOT EXISTS `actionmap` (
 -- Dumping data for table reputation.actionmap: ~6 rows (approximately)
 /*!40000 ALTER TABLE `actionmap` DISABLE KEYS */;
 INSERT INTO `actionmap` (`ID`, `Action`, `Name`) VALUES
-	(1, 5, 'Text'),
-	(2, 6, 'Image'),
-	(3, 8, 'Video'),
-	(5, 7, 'Audio'),
-	(6, 14, 'Link'),
+	(1, 5, 'text'),
+	(2, 6, 'image'),
+	(3, 8, 'video'),
+	(5, 7, 'audio'),
+	(6, 14, 'link'),
   (7, 9, 'approve');
+  (7, 10, 'comment');
 /*!40000 ALTER TABLE `actionmap` ENABLE KEYS */;
 
 
