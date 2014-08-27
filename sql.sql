@@ -35,7 +35,7 @@ INSERT INTO `actionmap` (`ID`, `Action`, `Name`) VALUES
 	(3, 8, 'video'),
 	(5, 7, 'audio'),
 	(6, 14, 'link'),
-  (7, 9, 'approve');
+  (7, 9, 'approve'),
   (7, 10, 'comment');
 /*!40000 ALTER TABLE `actionmap` ENABLE KEYS */;
 

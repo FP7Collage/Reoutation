@@ -62,7 +62,6 @@ server.get '/users/:user/rank', profiling.getUserRank
 server.get '/users/contributionStatistics', profiling.getContributionStatistics
 
 server.post '/activities/perform', profiling.performActivity
-server.post '/activities/change', profiling.activityChange
 server.get '/activities/levels', profiling.getActivityLevels
 
 server.post '/skills', profiling.addSkill
