@@ -339,30 +339,12 @@ saveActivity = ( type, skills, reference, user_id, projectID, req, res, next ) -
 # json payload
 # {  }
 exports.performActivity = ( req, res, next ) ->
-    return unless reqParam( req, next, 'type' ) and reqParam( req, next, 'target' ) and reqParam( req, next, 'activator' ) and reqParam( req, next, 'projectID' )
+    return unless reqParam( req, next, 'type' ) and reqParam( req, next, 'skills' ) and reqParam( req, next, 'reference' ) and reqParam( req, next, 'user' )
 
-    logger.verbose '%s: Activity performed: %s in %s by %j: %j', req.id, req.params.type, req.params.projectID, req.params.activator, req.params.target, {}
+    logger.verbose '%s: Activity performed: %s in %s by %j: %j', req.id, req.params.type, req.projectID, req.params.user, req.params.reference, {}
 
-    type = req.params.type
-    if type == 'create_post'
-        type = req.params.target.type
+    saveActivity req.params.type, req.params.skills, req.params.reference, req.params.user, req.projectID, req, res, next
 
-    saveActivity type, req.params.target.tags, req.params.target.id, req.params.activator.id, req.params.projectID, req, res, next
-
-exports.activityChange = ( req, res, next ) ->
-    return unless reqParam( req, next, 'initialEvent' ) and req.params.projectID
-
-    if req.params.object.id.charAt(0) == 'g' and req.params.changed.state and req.params.changed.state == 1
-        if req.params.initialEvent.type == 'create_post'
-            type = 'goal_complete'
-            if req.params.object.properties?.goalType == 'team'
-                type = 'team_goal_complete'
-            saveActivity type, req.params.object.tags, req.params.initialEvent.target, req.params.initialEvent.activator, req.params.projectID, req, res, next
-        else if req.params.initialEvent.type == 'Comment'
-            console.log req.params.object.tags, req.params.initialEvent.activator, req.params.projectID
-            saveActivity 'comment_goal_complete', req.params.object.tags, '', req.params.initialEvent.activator, req.params.projectID, req, res, next
-    else
-        res.send 204
 # FIXME: actions.actionType = 3 OR actions.ID = 14 seems very specific to logquest, needs some redesign
 exports.skillsDistribution = ( req, res, next ) ->
     connect() unless connection?
