@@ -25,9 +25,10 @@ CREATE TABLE IF NOT EXISTS `actionmap` (
   UNIQUE KEY `Name` (`Name`),
   KEY `FK__actions_map` (`Action`),
   CONSTRAINT `FK__actions_map` FOREIGN KEY (`Action`) REFERENCES `actions` (`ID`)
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
--- Dumping data for table reputation.actionmap: ~6 rows (approximately)
+-- Dumping data for table reputation.actionmap: ~7 rows (approximately)
+DELETE FROM `actionmap`;
 /*!40000 ALTER TABLE `actionmap` DISABLE KEYS */;
 INSERT INTO `actionmap` (`ID`, `Action`, `Name`) VALUES
 	(1, 5, 'text'),
@@ -35,8 +36,8 @@ INSERT INTO `actionmap` (`ID`, `Action`, `Name`) VALUES
 	(3, 8, 'video'),
 	(5, 7, 'audio'),
 	(6, 14, 'link'),
-  (7, 9, 'approve'),
-  (7, 10, 'comment');
+	(7, 9, 'approve'),
+	(8, 10, 'comment');
 /*!40000 ALTER TABLE `actionmap` ENABLE KEYS */;
 
 
@@ -50,9 +51,10 @@ CREATE TABLE IF NOT EXISTS `actions` (
   UNIQUE KEY `Name` (`Name`),
   KEY `Action Category` (`ActionType`),
   CONSTRAINT `Action?Category` FOREIGN KEY (`ActionType`) REFERENCES `actiontypes` (`ID`)
-) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
--- Dumping data for table reputation.actions: ~16 rows (approximately)
+-- Dumping data for table reputation.actions: ~18 rows (approximately)
+DELETE FROM `actions`;
 /*!40000 ALTER TABLE `actions` DISABLE KEYS */;
 INSERT INTO `actions` (`ID`, `ActionType`, `Name`) VALUES
 	(1, 1, 'Listen'),
@@ -70,9 +72,9 @@ INSERT INTO `actions` (`ID`, `ActionType`, `Name`) VALUES
 	(13, 5, 'Assign'),
 	(14, 5, 'Broadcast'),
 	(15, 5, 'Private Share'),
-  (16, 6, 'goal_complete'),
-  (17, 6, 'comment_goal_complete');
-  (18, 6, 'team_goal_complete'),
+	(16, 6, 'goal_complete'),
+	(17, 6, 'comment_goal_complete'),
+	(18, 6, 'team_goal_complete');
 /*!40000 ALTER TABLE `actions` ENABLE KEYS */;
 
 
@@ -85,6 +87,7 @@ CREATE TABLE IF NOT EXISTS `actiontypes` (
 ) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 -- Dumping data for table reputation.actiontypes: ~7 rows (approximately)
+DELETE FROM `actiontypes`;
 /*!40000 ALTER TABLE `actiontypes` DISABLE KEYS */;
 INSERT INTO `actiontypes` (`ID`, `Name`) VALUES
 	(1, 'Collect'),
@@ -117,6 +120,7 @@ CREATE TABLE IF NOT EXISTS `activities` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 -- Dumping data for table reputation.activities: ~0 rows (approximately)
+DELETE FROM `activities`;
 /*!40000 ALTER TABLE `activities` DISABLE KEYS */;
 /*!40000 ALTER TABLE `activities` ENABLE KEYS */;
 
@@ -136,27 +140,9 @@ CREATE TABLE IF NOT EXISTS `allactivities` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 -- Dumping data for table reputation.allactivities: ~0 rows (approximately)
+DELETE FROM `allactivities`;
 /*!40000 ALTER TABLE `allactivities` DISABLE KEYS */;
 /*!40000 ALTER TABLE `allactivities` ENABLE KEYS */;
-
-
--- Dumping structure for table reputation.goalupdates
-DROP TABLE IF EXISTS `goalupdates`;
-CREATE TABLE IF NOT EXISTS `goalupdates` (
-  `Key` int(10) unsigned NOT NULL AUTO_INCREMENT,
-  `User` int(10) unsigned NOT NULL DEFAULT '0',
-  `Status` enum('ACCEPT','DECLINE','VIEW INFO','PROGRESS','COMPLETE','TIME OUT','GIVE UP') COLLATE utf8_unicode_ci NOT NULL COMMENT 'The thing what they do',
-  `QuestID` int(10) unsigned NOT NULL,
-  `Reference` varchar(50) COLLATE utf8_unicode_ci DEFAULT NULL,
-  `Date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`Key`),
-  KEY `goalUpdate to user` (`User`),
-  CONSTRAINT `goalUpdate to user` FOREIGN KEY (`User`) REFERENCES `users` (`ID`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='When the user does a thing';
-
--- Dumping data for table reputation.goalupdates: ~0 rows (approximately)
-/*!40000 ALTER TABLE `goalupdates` DISABLE KEYS */;
-/*!40000 ALTER TABLE `goalupdates` ENABLE KEYS */;
 
 
 -- Dumping structure for table reputation.projectskills
@@ -169,14 +155,11 @@ CREATE TABLE IF NOT EXISTS `projectskills` (
   UNIQUE KEY `Project_Skill` (`Project`,`Skill`),
   KEY `Skill` (`Skill`),
   CONSTRAINT `FK_projectSkills_skills` FOREIGN KEY (`Skill`) REFERENCES `skills` (`ID`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
--- Dumping data for table reputation.projectskills: ~3 rows (approximately)
+-- Dumping data for table reputation.projectskills: ~0 rows (approximately)
+DELETE FROM `projectskills`;
 /*!40000 ALTER TABLE `projectskills` DISABLE KEYS */;
-INSERT INTO `projectskills` (`ID`, `Project`, `Skill`) VALUES
-	(1, NULL, 1),
-	(2, NULL, 2),
-	(3, NULL, 3);
 /*!40000 ALTER TABLE `projectskills` ENABLE KEYS */;
 
 
@@ -187,39 +170,12 @@ CREATE TABLE IF NOT EXISTS `skills` (
   `Name` varchar(255) COLLATE utf8_unicode_ci NOT NULL,
   PRIMARY KEY (`ID`),
   UNIQUE KEY `Name` (`Name`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
-
--- Dumping data for table reputation.skills: ~3 rows (approximately)
-/*!40000 ALTER TABLE `skills` DISABLE KEYS */;
-INSERT INTO `skills` (`ID`, `Name`) VALUES
-	(1, 'explorative workshops'),
-	(3, 'open materials'),
-	(2, 'sustainable resources');
-/*!40000 ALTER TABLE `skills` ENABLE KEYS */;
-
-
--- Dumping structure for table reputation.userpreferences
-DROP TABLE IF EXISTS `userpreferences`;
-CREATE TABLE IF NOT EXISTS `userpreferences` (
-  `ID` int(10) unsigned NOT NULL AUTO_INCREMENT,
-  `User` int(10) unsigned NOT NULL,
-  `Action` int(10) unsigned NOT NULL,
-  `Skill` int(10) unsigned NOT NULL,
-  `Feedback` enum('Y','N') COLLATE utf8_unicode_ci NOT NULL,
-  `Level` enum('goal','action') COLLATE utf8_unicode_ci NOT NULL,
-  `Date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`ID`),
-  KEY `Preferences - User` (`User`),
-  KEY `Preferences - Action` (`Action`),
-  KEY `Preferences - Skill` (`Skill`),
-  CONSTRAINT `Preferences - Action` FOREIGN KEY (`Action`) REFERENCES `actions` (`ID`),
-  CONSTRAINT `Preferences - Skill` FOREIGN KEY (`Skill`) REFERENCES `skills` (`ID`),
-  CONSTRAINT `Preferences - User` FOREIGN KEY (`User`) REFERENCES `users` (`ID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
--- Dumping data for table reputation.userpreferences: ~0 rows (approximately)
-/*!40000 ALTER TABLE `userpreferences` DISABLE KEYS */;
-/*!40000 ALTER TABLE `userpreferences` ENABLE KEYS */;
+-- Dumping data for table reputation.skills: ~0 rows (approximately)
+DELETE FROM `skills`;
+/*!40000 ALTER TABLE `skills` DISABLE KEYS */;
+/*!40000 ALTER TABLE `skills` ENABLE KEYS */;
 
 
 -- Dumping structure for table reputation.users
@@ -232,46 +188,9 @@ CREATE TABLE IF NOT EXISTS `users` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 -- Dumping data for table reputation.users: ~0 rows (approximately)
+DELETE FROM `users`;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
-
-
--- Dumping structure for table reputation.userskills
-DROP TABLE IF EXISTS `userskills`;
-CREATE TABLE IF NOT EXISTS `userskills` (
-  `Key` int(10) unsigned NOT NULL AUTO_INCREMENT,
-  `User` int(10) unsigned NOT NULL,
-  `Skill` int(10) unsigned NOT NULL,
-  `Action` int(10) unsigned NOT NULL,
-  `Time` int(10) unsigned NOT NULL DEFAULT '0',
-  `Count` int(10) unsigned NOT NULL DEFAULT '0',
-  `Rating` int(10) unsigned NOT NULL DEFAULT '0',
-  `PDV` float unsigned NOT NULL DEFAULT '0',
-  PRIMARY KEY (`Key`),
-  UNIQUE KEY `Combined index` (`User`,`Skill`,`Action`),
-  KEY ` Skills to userSkills` (`Skill`),
-  KEY `Actions to userSkills` (`Action`),
-  CONSTRAINT ` Skills to userSkills` FOREIGN KEY (`Skill`) REFERENCES `skills` (`ID`),
-  CONSTRAINT `Actions to userSkills` FOREIGN KEY (`Action`) REFERENCES `actions` (`ID`),
-  CONSTRAINT `Users to userSkills` FOREIGN KEY (`User`) REFERENCES `users` (`ID`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
-
--- Dumping data for table reputation.userskills: ~0 rows (approximately)
-/*!40000 ALTER TABLE `userskills` DISABLE KEYS */;
-/*!40000 ALTER TABLE `userskills` ENABLE KEYS */;
-
-
--- Dumping structure for table reputation.userstats
-DROP TABLE IF EXISTS `userstats`;
-CREATE TABLE IF NOT EXISTS `userstats` (
-  `ID` int(11) NOT NULL AUTO_INCREMENT,
-  `User` int(11) NOT NULL,
-  `Count` int(11) NOT NULL,
-  `Date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`ID`),
-  KEY `User_Date` (`User`,`Date`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
-
--- Dumping data for table reputation.userstats: ~0 rows (approximately)
-/*!40000 ALTER TABLE `userstats` DISABLE KEYS */;
-/*!40000 ALTER TABLE `userstats` ENABLE KEYS */;
+/*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;
+/*!40014 SET FOREIGN_KEY_CHECKS=IF(@OLD_FOREIGN_KEY_CHECKS IS NULL, 1, @OLD_FOREIGN_KEY_CHECKS) */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

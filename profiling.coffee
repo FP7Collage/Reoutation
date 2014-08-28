@@ -33,7 +33,7 @@ query = ( txt, args = [] ) ->
     Q.ninvoke( connection, 'query', txt, args ).then (res) -> res[0]
 
 cache =
-    actionTypes: {}
+    actiontypes: {}
     actions: {}
     skills: {}
     users: {}
@@ -54,7 +54,7 @@ getCacheAction = ( name ) ->
         logger.silly 'Cache hit for actions["%s"]', name
         return Q( cacheItem )
     logger.silly 'Cache miss for actions["%s"]', name
-    query( 'SELECT Action FROM (SELECT Action, Name FROM actionMap UNION SELECT ID, Name FROM actions ) as t1 WHERE `Name` = ?', [ name ] ).then (results) ->
+    query( 'SELECT Action FROM (SELECT Action, Name FROM actionmap UNION SELECT ID, Name FROM actions ) as t1 WHERE `Name` = ?', [ name ] ).then (results) ->
         logger.silly "Got action: %j", results, {}
         cache[ 'actions' ][ name ] = results[0]?.Action || false
 
@@ -167,18 +167,18 @@ exports.addSkill = ( req, res, next ) ->
     )
     .then( (wat) ->
         cache.skills[req.params.name] = wat.insertId
-        query("INSERT INTO `projectSkills` SET ?", {
+        query("INSERT INTO `projectskills` SET ?", {
             Project: req.projectID || null
             Skill: wat.insertId
         })
         insertQuery = "
         INSERT INTO `activities` (Project, User, Action,Skill, Reference, Date)
             SELECT
-                Project, users.ID as User, actionMap.Action as Action, " + wat.insertId + ", Reference, Date
+                Project, users.ID as User, actionmap.Action as Action, " + wat.insertId + ", Reference, Date
             FROM
                 allactivities
             JOIN users ON allactivities.User = users.UUID
-            JOIN actionMap ON allactivities.`Action` = actionMap.Name
+            JOIN actionmap ON allactivities.`Action` = actionmap.Name
             WHERE ? AND ?"
         query(insertQuery, [{
             Project: req.projectID || null }, {
@@ -205,7 +205,7 @@ exports.deleteSkill = ( req, res, next ) ->
     logger.verbose '%s: Removing skill %s from project', req.id, req.params.name
     getCacheItem( 'skills', req.params.name )
     .then( (skillID) ->
-        query("DELETE FROM `projectSkills` WHERE ? AND ?", [{
+        query("DELETE FROM `projectskills` WHERE ? AND ?", [{
             Project: req.projectID || null
             }, {
             Skill: skillID
@@ -258,7 +258,7 @@ exports.getActivityLevels = ( req, res, next ) ->
         SELECT users.UUID as User, actions.Name as Action, skills.Name as Skill, Reference FROM activities
         JOIN users ON activities.User = users.ID
         JOIN actions ON activities.Action = actions.ID
-        JOIN projectSkills ON activities.Skill = projectSkills.Skill AND projectSkills.Project = ?
+        JOIN projectskills ON activities.Skill = projectskills.Skill AND projectskills.Project = ?
         JOIN skills ON activities.Skill = skills.ID
         WHERE 1 = 1 "
     if req.params.dateFrom
@@ -362,8 +362,8 @@ exports.skillsDistribution = ( req, res, next ) ->
         RIGHT JOIN skills ON
             activities.Skill = skills.ID"
     if req.projectID
-        distributionQuery += " AND activities.Project = " + connection.escape(req.projectID) + " JOIN projectSkills ON
-            skills.ID = projectSkills.Skill AND projectSkills.Project = " + connection.escape(req.projectID)
+        distributionQuery += " AND activities.Project = " + connection.escape(req.projectID) + " JOIN projectskills ON
+            skills.ID = projectskills.Skill AND projectskills.Project = " + connection.escape(req.projectID)
     if req.params.skills and req.params.skills instanceof Array
         req.params.skills = req.params.skills.map (skill) -> connection.escape(skill)
         distributionQuery += " AND skills.Name IN ('" + req.params.skills.join("','") + "')"
@@ -468,8 +468,8 @@ exports.skillsContribution = ( req, res, next ) ->
         RIGHT JOIN skills ON
             activities.Skill = skills.ID"
     if req.projectID
-        distributionQuery += " AND activities.Project = " + connection.escape(req.projectID) + " JOIN projectSkills ON
-            skills.ID = projectSkills.Skill AND projectSkills.Project = " + connection.escape(req.projectID)
+        distributionQuery += " AND activities.Project = " + connection.escape(req.projectID) + " JOIN projectskills ON
+            skills.ID = projectskills.Skill AND projectskills.Project = " + connection.escape(req.projectID)
     distributionQuery += " GROUP BY
             skills.ID, activities.User
         ORDER BY Skill, Count DESC"
@@ -536,8 +536,8 @@ exports.userNumber = ( req, res, next ) ->
          RIGHT JOIN skills ON
             activities.Skill = skills.ID"
     if req.projectID
-        userNumberQuery += " AND activities.Project = " + connection.escape(req.projectID) + " JOIN projectSkills ON
-            skills.ID = projectSkills.Skill AND projectSkills.Project = " + connection.escape(req.projectID)
+        userNumberQuery += " AND activities.Project = " + connection.escape(req.projectID) + " JOIN projectskills ON
+            skills.ID = projectskills.Skill AND projectskills.Project = " + connection.escape(req.projectID)
     userNumberQuery += " GROUP BY skills.ID"
 
     query( userNumberQuery )
@@ -576,8 +576,8 @@ exports.skillsCounts = ( req, res, next ) ->
         countsQuery += " JOIN users ON users.UUID = " + connection.escape(req.params.user) + " AND users.ID = activities.User"
     countsQuery += " RIGHT JOIN skills ON skills.ID = activities.Skill"
     if req.projectID
-        countsQuery += " AND activities.Project = " + connection.escape(req.projectID) + " JOIN projectSkills ON
-            skills.ID = projectSkills.Skill AND projectSkills.Project = " + connection.escape(req.projectID)
+        countsQuery += " AND activities.Project = " + connection.escape(req.projectID) + " JOIN projectskills ON
+            skills.ID = projectskills.Skill AND projectskills.Project = " + connection.escape(req.projectID)
     countsQuery += " WHERE 1=1"
     if req.params.dateFrom
         countsQuery += " AND activities.Date >= " + connection.escape(req.params.dateFrom)
@@ -614,8 +614,8 @@ exports.getContributionStatistics = ( req, res, next ) ->
         JOIN users ON users.ID = activities.User
         RIGHT JOIN skills ON skills.ID = activities.Skill"
     if req.projectID
-        countsQuery += " AND activities.Project = " + connection.escape(req.projectID) + " JOIN projectSkills ON
-            skills.ID = projectSkills.Skill AND projectSkills.Project = " + connection.escape(req.projectID)
+        countsQuery += " AND activities.Project = " + connection.escape(req.projectID) + " JOIN projectskills ON
+            skills.ID = projectskills.Skill AND projectskills.Project = " + connection.escape(req.projectID)
     countsQuery += " WHERE 1=1"
     if req.params.dateFrom
         countsQuery += " AND activities.Date >= " + connection.escape(req.params.dateFrom)
@@ -751,7 +751,7 @@ exports.recommendActions = ( req, res, next ) ->
 exports.recommendActionTypes = ( req, res, next ) ->
     logger.verbose '%s: ActionType Recommendations Reqest for %s in %j', req.id, req.params.user, req.params.names, {}
     statisticsQuery = "
-        SELECT actionTypes.Name, SUM(b1.Done) as Done, SUM(b2.Referenced) as Referenced FROM
+        SELECT actiontypes.Name, SUM(b1.Done) as Done, SUM(b2.Referenced) as Referenced FROM
             (
             SELECT
                 Action, COUNT(*) as Done
@@ -774,7 +774,7 @@ exports.recommendActionTypes = ( req, res, next ) ->
                 a2.Key IS NOT NULL
             GROUP BY a1.Action
             ) b2
-        ON b1.Action = b2.Action JOIN (actions, actionTypes) ON (actions.ID = b1.Action AND actions.ActionType = actionTypes.ID) AND actionTypes.Name IN (?)
+        ON b1.Action = b2.Action JOIN (actions, actiontypes) ON (actions.ID = b1.Action AND actions.ActionType = actiontypes.ID) AND actiontypes.Name IN (?)
         GROUP BY actions.ActionType
         ORDER BY IFNULL(b1.Done, 0)+IFNULL(b2.Referenced, 0) DESC"
 
@@ -788,6 +788,6 @@ exports.recommendActionTypes = ( req, res, next ) ->
 
 # SELECT users.UUID, actions.Name, COUNT(activities.Key) as Count FROM activities, actions, users WHERE users.ID = activities.User AND actions.ID = activities.Action GROUP BY activities.User, activities.Action ORDER BY activities.User, Count DESC
 
-# SELECT users.UUID, actionTypes.Name, COUNT(activities.Key) as Count FROM activities, actions, users, actionTypes WHERE users.ID = activities.User AND actions.ActionType = actionTypes.ID AND actions.ID = activities.Action GROUP BY activities.User, actions.ActionType ORDER BY activities.User, Count DESC
+# SELECT users.UUID, actiontypes.Name, COUNT(activities.Key) as Count FROM activities, actions, users, actiontypes WHERE users.ID = activities.User AND actions.ActionType = actiontypes.ID AND actions.ID = activities.Action GROUP BY activities.User, actions.ActionType ORDER BY activities.User, Count DESC
 
 # SELECT a1.*, COUNT(*) as selfRefs, SUM(numOfRefs) FROM (SELECT a1.*, COUNT(a2.Reference) as numOfRefs FROM (SELECT * FROM activities WHERE User=1) a1 LEFT OUTER JOIN activities a2 ON ( a2.Reference IS NOT NULL AND a1.Key=a2.Reference ) GROUP BY a1.Key) as a1 GROUP BY a1.Action
