@@ -1,42 +1,7 @@
 restify   = require 'restify'
 profiling = require './profiling'
-argv      = require('yargs').demand(['reputations', 'gaminomics']).argv
 logger    = require './logger'
 
-
-# connect to gaminomics
-
-jsonClient = restify.createJsonClient
-    requestTimeout: 5000
-    connectTimeout: 5000
-    retry: false
-    url: argv.gaminomics
-    version: '*'
-
-listenersResponse = (type, err, req, res, obj) ->
-    if err
-        logger.error 'Could not regigister ' + type + ' listener on Gaminomics!', err
-        # FIXME: Should this be a fatal error?
-    else
-        logger.verbose 'Registered ' + type + ' listener on Gaminomics!'
-
-jsonClient.post '/listeners', {
-    "id": "reputationEvents",
-    "type": "Event",
-    "callback": argv.reputations + "/activities/perform"
-}, listenersResponse.bind null, "Event"
-
-jsonClient.post '/listeners', {
-    "id": "reputationUsers",
-    "type": "UserCreate",
-    "callback": argv.reputations + "/users"
-}, listenersResponse.bind null, "UserCreate"
-
-jsonClient.post '/listeners', {
-    "id": "reputationActivityChange",
-    "type": "ActivityChange",
-    "callback": argv.reputations + "/activities/change"
-}, listenersResponse.bind null, "ActivityChange"
 
 server = restify.createServer({
     name: 'Reputation Service'
