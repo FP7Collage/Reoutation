@@ -75,14 +75,21 @@ reqParam = ( req, next, p ) ->
         return false
     return true
 
+reqProjectID = ( req, next ) ->
+    if not req.projectID
+        logger.silly '%s: Missing projectID!', req.id
+        next new restify.MissingParameterError "projectID is required!"
+        return false
+    return true
+
 reqParamPromise = ( req, res, key ) ->
     return ( val ) ->
         if val
             return val
-        param = req.params[key];
+        param = req.params[key]
         logger.debug '%s: Invalid value "%s" for paramter %s!', req.id, param, key
         res.send new restify.InvalidArgumentError "Unknown #{key} '#{param}'"
-        throw new Error("Invalid argument!");
+        throw new Error("Invalid argument!")
 
 failurePromise = ( req, res, action ) ->
     return ( errorMsg ) ->
@@ -98,15 +105,14 @@ failurePromise = ( req, res, action ) ->
 getUser = ( req, res ) -> getCacheUser( req.params.user ).then( reqParamPromise req, res, 'user' )
 
 
-getRecommendations = ( req, res, next, queryString ) ->
-    return unless reqParam( req, next, 'user' )
-    return unless reqParam( req, next, 'names' )
+getRecommendations = (req, res, next, queryString) ->
+    return unless ( reqParam( req, next, 'user' ) && reqParam( req, next, 'names' ) && reqProjectID( req, next ) )
 
     logger.verbose '%s: Getting recommendations for %s %s', req.id, req.params.user, req.params.names
 
     getUser( req, res )
     .then( ( userID ) ->
-        query queryString, [ userID, userID, req.params.names ]
+        query queryString, [ userID, req.projectID, userID, req.projectID, req.params.names ]
     )
     .then( (wat) ->
 
@@ -220,7 +226,7 @@ exports.deleteSkill = ( req, res, next ) ->
     .done()
 
 exports.getUserRank = ( req, res, next ) ->
-    return unless reqParam( req, next, 'user' )
+    return unless ( reqParam( req, next, 'user' ) and reqProjectID( req, next ) )
     connect() unless connection?
     logger.verbose '%s: User Rank Reqest for %s', req.id, req.params.user
     userRankQuery = "
@@ -231,8 +237,7 @@ exports.getUserRank = ( req, res, next ) ->
             (SELECT COUNT(*) as points, User FROM activities GROUP BY User) uo
         WHERE
             (ui.points, ui.User) >= (uo.points, uo.User) AND uo.User = ?"
-    if req.projectID
-        userRankQuery = " AND ui.Project = uo.Project AND ui.Project = " + connection.escape(req.projectID)
+    userRankQuery += " AND ui.Project = uo.Project AND ui.Project = " + connection.escape(req.projectID)
 
     getUser( req, res )
     .then( ( userID ) ->
@@ -249,9 +254,7 @@ exports.getUserRank = ( req, res, next ) ->
     .done()
 
 exports.getActivityLevels = ( req, res, next ) ->
-    if not req.projectID
-         next new restify.MissingParameterError "projectID is required!"
-         return false
+    return unless reqProjectID( req, next )
     connect() unless connection?
     logger.verbose '%s: Ranks reqest', req.id
     ranksQuery = "
@@ -347,6 +350,7 @@ exports.performActivity = ( req, res, next ) ->
 
 # FIXME: actions.actionType = 3 OR actions.ID = 14 seems very specific to logquest, needs some redesign
 exports.skillsDistribution = ( req, res, next ) ->
+    return unless reqProjectID( req, next )
     connect() unless connection?
 
     distributionQuery = "
@@ -361,8 +365,7 @@ exports.skillsDistribution = ( req, res, next ) ->
             ( actions.actionType = 3 OR actions.ID = 14 ) AND activities.Action = actions.ID
         RIGHT JOIN skills ON
             activities.Skill = skills.ID"
-    if req.projectID
-        distributionQuery += " AND activities.Project = " + connection.escape(req.projectID) + " JOIN projectskills ON
+    distributionQuery += " AND activities.Project = " + connection.escape(req.projectID) + " JOIN projectskills ON
             skills.ID = projectskills.Skill AND projectskills.Project = " + connection.escape(req.projectID)
     if req.params.skills and req.params.skills instanceof Array
         req.params.skills = req.params.skills.map (skill) -> connection.escape(skill)
@@ -454,7 +457,7 @@ exports.skillsDistribution = ( req, res, next ) ->
     .done()
 
 exports.skillsContribution = ( req, res, next ) ->
-    return unless reqParam( req, next, 'user' )
+    return unless ( reqParam( req, next, 'user' ) and reqProjectID( req, next ) )
     logger.verbose '%s: Skills contribution request for %s', req.id, req.params.user
     connect() unless connection?
 
@@ -467,8 +470,7 @@ exports.skillsContribution = ( req, res, next ) ->
             ( actions.actionType = 3 OR actions.ID = 14 ) AND activities.Action = actions.ID
         RIGHT JOIN skills ON
             activities.Skill = skills.ID"
-    if req.projectID
-        distributionQuery += " AND activities.Project = " + connection.escape(req.projectID) + " JOIN projectskills ON
+    distributionQuery += " AND activities.Project = " + connection.escape(req.projectID) + " JOIN projectskills ON
             skills.ID = projectskills.Skill AND projectskills.Project = " + connection.escape(req.projectID)
     distributionQuery += " GROUP BY
             skills.ID, activities.User
@@ -524,6 +526,7 @@ exports.skillsContribution = ( req, res, next ) ->
     .done()
 
 exports.userNumber = ( req, res, next ) ->
+    return unless reqProjectID( req, next )
     logger.verbose '%s: User Number Request', req.id
     connect() unless connection?
     userNumberQuery = "
@@ -535,8 +538,7 @@ exports.userNumber = ( req, res, next ) ->
             ( actions.actionType = 3 OR actions.ID = 14 ) AND activities.Action = actions.ID
          RIGHT JOIN skills ON
             activities.Skill = skills.ID"
-    if req.projectID
-        userNumberQuery += " AND activities.Project = " + connection.escape(req.projectID) + " JOIN projectskills ON
+    userNumberQuery += " AND activities.Project = " + connection.escape(req.projectID) + " JOIN projectskills ON
             skills.ID = projectskills.Skill AND projectskills.Project = " + connection.escape(req.projectID)
     userNumberQuery += " GROUP BY skills.ID"
 
@@ -561,8 +563,7 @@ exports.userNumber = ( req, res, next ) ->
     .done()
 
 exports.skillsCounts = ( req, res, next ) ->
-    console.log req.params
-    # Why is this here but no where else?
+    return unless reqProjectID( req, next )
     connect() unless connection?
     countsQuery = "
         SELECT
@@ -570,13 +571,11 @@ exports.skillsCounts = ( req, res, next ) ->
         FROM
             activities
         JOIN actions ON ( actions.actionType = 3 OR actions.ID = 14 ) AND actions.ID = activities.Action"
-    if req.projectID
-        countsQuery += " AND Project = " + connection.escape(req.projectID)
+    countsQuery += " AND Project = " + connection.escape(req.projectID)
     if req.params.user
         countsQuery += " JOIN users ON users.UUID = " + connection.escape(req.params.user) + " AND users.ID = activities.User"
     countsQuery += " RIGHT JOIN skills ON skills.ID = activities.Skill"
-    if req.projectID
-        countsQuery += " AND activities.Project = " + connection.escape(req.projectID) + " JOIN projectskills ON
+    countsQuery += " AND activities.Project = " + connection.escape(req.projectID) + " JOIN projectskills ON
             skills.ID = projectskills.Skill AND projectskills.Project = " + connection.escape(req.projectID)
     countsQuery += " WHERE 1=1"
     if req.params.dateFrom
@@ -604,6 +603,7 @@ exports.skillsCounts = ( req, res, next ) ->
     .done()
 
 exports.getContributionStatistics = ( req, res, next ) ->
+    return unless reqProjectID( req, next )
     connect() unless connection?
     countsQuery = "
         SELECT
@@ -613,8 +613,7 @@ exports.getContributionStatistics = ( req, res, next ) ->
         JOIN actions ON ( actions.actionType = 3 OR actions.ID = 14 ) AND actions.ID = activities.Action
         JOIN users ON users.ID = activities.User
         RIGHT JOIN skills ON skills.ID = activities.Skill"
-    if req.projectID
-        countsQuery += " AND activities.Project = " + connection.escape(req.projectID) + " JOIN projectskills ON
+    countsQuery += " AND activities.Project = " + connection.escape(req.projectID) + " JOIN projectskills ON
             skills.ID = projectskills.Skill AND projectskills.Project = " + connection.escape(req.projectID)
     countsQuery += " WHERE 1=1"
     if req.params.dateFrom
@@ -660,7 +659,7 @@ exports.getContributionStatistics = ( req, res, next ) ->
                 user.contributionFraction = Math.floor( ( user.contribution / totalContributions.total ) * 100 ) / 100
                 for skill, _ of allSkills
                     if ! user.skills[skill]
-                         user.skills[skill] = { skill:skill, rank: 0, contribution:0, contributionFraction:0 }
+                        user.skills[skill] = { skill:skill, rank: 0, contribution:0, contributionFraction:0 }
                 for skillName, skill of user.skills
                     skill.contributors = contributors[skillName] || 0
                     skill.contributionFraction = ( Math.floor( ( skill.contribution / totalContributions.skills[skillName] ) * 100 ) / 100 ) || 0
@@ -674,7 +673,7 @@ exports.getContributionStatistics = ( req, res, next ) ->
 
 
             for rankObj, rank in rankings
-                users[rankObj.user].rank = rank+1
+                users[rankObj.user].rank = rank + 1
 
 
         logger.debug '%s: Sending users contribution statistics:\n%j', req.id, users, {}
@@ -696,7 +695,7 @@ exports.recommendSkills = ( req, res, next ) ->
             FROM
                 activities
             WHERE
-                User = ?
+                User = ? AND Project = ?
             GROUP BY
                 Skill
             ) b1
@@ -705,7 +704,7 @@ exports.recommendSkills = ( req, res, next ) ->
             SELECT
                 a1.Skill, COUNT(*) as Referenced
             FROM
-                (SELECT * FROM activities WHERE User = ?) a1 LEFT OUTER JOIN activities a2
+                (SELECT * FROM activities WHERE User = ? AND Project = ?) a1 LEFT OUTER JOIN activities a2
             ON
                 ( a1.User != a2.User AND a1.Reference=a2.Reference )
             WHERE
@@ -727,7 +726,7 @@ exports.recommendActions = ( req, res, next ) ->
             FROM
                 activities
             WHERE
-                User = ?
+                User = ? AND Project = ?
             GROUP BY
                 Action
             ) b1
@@ -736,7 +735,7 @@ exports.recommendActions = ( req, res, next ) ->
             SELECT
                 a1.Action, COUNT(*) as Referenced
             FROM
-                (SELECT * FROM activities WHERE User = ?) a1 LEFT OUTER JOIN activities a2
+                (SELECT * FROM activities WHERE User = ? AND Project = ?) a1 LEFT OUTER JOIN activities a2
             ON
                 ( a1.User != a2.User AND a1.Reference=a2.Reference )
             WHERE
@@ -758,7 +757,7 @@ exports.recommendActionTypes = ( req, res, next ) ->
             FROM
                 activities
             WHERE
-                User = ?
+                User = ? AND Project = ?
             GROUP BY
                 Action
             ) b1
@@ -767,7 +766,7 @@ exports.recommendActionTypes = ( req, res, next ) ->
             SELECT
                 a1.Action, COUNT(*) as Referenced
             FROM
-                (SELECT * FROM activities WHERE User = ?) a1 LEFT OUTER JOIN activities a2
+                (SELECT * FROM activities WHERE User = ? AND Project = ?) a1 LEFT OUTER JOIN activities a2
             ON
                 ( a1.User != a2.User AND a1.Reference=a2.Reference )
             WHERE
