@@ -24,14 +24,13 @@ CREATE TABLE IF NOT EXISTS `actions` (
   `Name` varchar(100) COLLATE utf8_unicode_ci NOT NULL,
   PRIMARY KEY (`ID`),
   UNIQUE KEY `Name` (`Name`),
-  KEY `Action Category` (`ActionType`),
-  CONSTRAINT `Action?Category` FOREIGN KEY (`ActionType`) REFERENCES `actionTypes` (`ID`)
+  KEY `Action Category` (`ActionType`)
 ) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 -- Dumping data for table reputation.actions: ~15 rows (approximately)
 /*!40000 ALTER TABLE `actions` DISABLE KEYS */;
 INSERT INTO `actions` (`ID`, `ActionType`, `Name`) VALUES
-	(1, 1, 'Listen'),
+    (1, 1, 'Listen'),
 	(2, 1, 'Read'),
 	(3, 1, 'Watch'),
 	(4, 2, 'Tag'),
@@ -77,8 +76,7 @@ CREATE TABLE IF NOT EXISTS `actionMap` (
   `Name` varchar(100) COLLATE utf8_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`ID`),
   UNIQUE KEY `Name` (`Name`),
-  KEY `FK__actions_map` (`Action`),
-  CONSTRAINT `FK__actions_map` FOREIGN KEY (`Action`) REFERENCES `actions` (`ID`)
+  KEY `FK__actions_map` (`Action`)
 ) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 -- Dumping data for table reputation.actionMap: ~3 rows (approximately)
@@ -106,8 +104,7 @@ CREATE TABLE IF NOT EXISTS `goalUpdates` (
   `Reference` varchar(50) COLLATE utf8_unicode_ci DEFAULT NULL,
   `Date` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`Key`),
-  KEY `goalUpdate to user` (`User`),
-  CONSTRAINT `goalUpdate to user` FOREIGN KEY (`User`) REFERENCES `users` (`ID`)
+  KEY `goalUpdate to user` (`User`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='When the user does a thing';
 
 -- Dumping data for table reputation.goalUpdates: ~0 rows (approximately)
@@ -146,10 +143,9 @@ CREATE TABLE IF NOT EXISTS `userPreferences` (
   PRIMARY KEY (`ID`),
   KEY `Preferences - User` (`User`),
   KEY `Preferences - Action` (`Action`),
-  KEY `Preferences - Skill` (`Skill`),
-  CONSTRAINT `Preferences - User` FOREIGN KEY (`User`) REFERENCES `users` (`ID`),
-  CONSTRAINT `Preferences - Action` FOREIGN KEY (`Action`) REFERENCES `actions` (`ID`),
-  CONSTRAINT `Preferences - Skill` FOREIGN KEY (`Skill`) REFERENCES `skills` (`ID`)
+  KEY `Preferences - Skill` (`Skill`)
+
+
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 -- Dumping data for table reputation.userPreferences: ~0 rows (approximately)
@@ -179,10 +175,9 @@ CREATE TABLE IF NOT EXISTS `userSkills` (
   PRIMARY KEY (`Key`),
   UNIQUE KEY `Combined index` (`User`,`Skill`,`Action`),
   KEY ` Skills to userSkills` (`Skill`),
-  KEY `Actions to userSkills` (`Action`),
-  CONSTRAINT ` Skills to userSkills` FOREIGN KEY (`Skill`) REFERENCES `skills` (`ID`),
-  CONSTRAINT `Actions to userSkills` FOREIGN KEY (`Action`) REFERENCES `actions` (`ID`),
-  CONSTRAINT `Users to userSkills` FOREIGN KEY (`User`) REFERENCES `users` (`ID`)
+  KEY `Actions to userSkills` (`Action`)
+
+
 ) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 
@@ -197,10 +192,9 @@ CREATE TABLE IF NOT EXISTS `activities` (
   PRIMARY KEY (`Key`),
   KEY `Actions` (`Action`),
   KEY `User` (`User`),
-  KEY `Tags` (`Skill`),
-  CONSTRAINT `Skills to activities` FOREIGN KEY (`Skill`) REFERENCES `skills` (`ID`),
-  CONSTRAINT `Actions to activities` FOREIGN KEY (`Action`) REFERENCES `actions` (`ID`),
-  CONSTRAINT `Users to activities` FOREIGN KEY (`User`) REFERENCES `users` (`ID`)
+  KEY `Tags` (`Skill`)
+
+
 ) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 -- Dumping structure for trigger reputation.activity_insert
@@ -240,4 +234,3 @@ SET SQL_MODE=@OLDTMP_SQL_MODE;
 /*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;
 /*!40014 SET FOREIGN_KEY_CHECKS=IF(@OLD_FOREIGN_KEY_CHECKS IS NULL, 1, @OLD_FOREIGN_KEY_CHECKS) */;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-
