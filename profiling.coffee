@@ -14,6 +14,7 @@ connect = () ->
         dbVars = dbString.split(':')
     else
         dbVars = ['localhost', 3306]
+    logger.info 'Connecting to DB on %s:%d', dbVars[0], dbVars[1]
 
     connection = mysql.createPool
         host: dbVars[0],
@@ -21,17 +22,18 @@ connect = () ->
         user: 'reputation',
         password: 'reputation',
         database: 'reputation',
+        insecureAuth: true,
         connectionLimit: 10
 
 connect()
 
 query = ( txt, args = [] ) ->
-    logger.debug "Query!", txt, args, connection?
+    logger.silly "Query!", txt, args, connection?
     connect() unless connection?
     Q.ninvoke( connection, 'query', txt, args ).then (res) -> res[0]
 
 cache =
-    actionTypes: {}
+    actiontypes: {}
     actions: {}
     skills: {}
     users: {}
@@ -43,7 +45,7 @@ getCacheItem = ( key, name ) ->
         return Q( cacheItem )
     logger.silly 'Cache miss for %s["%s"]', key, name
     query( 'SELECT `ID` FROM ?? WHERE `Name` = ?', [ key, name ] ).then (results) ->
-        logger.silly "Got item: %j", results
+        logger.silly "Got item: %j", results, {}
         cache[ key ][ name ] = results[0]?.ID || false
 
 getCacheAction = ( name ) ->
@@ -52,8 +54,8 @@ getCacheAction = ( name ) ->
         logger.silly 'Cache hit for actions["%s"]', name
         return Q( cacheItem )
     logger.silly 'Cache miss for actions["%s"]', name
-    query( 'SELECT `Action` FROM actionMap WHERE `Name` = ?', [ name ] ).then (results) ->
-        logger.silly "Got action: %j", results
+    query( 'SELECT Action FROM (SELECT Action, Name FROM actionmap UNION SELECT ID, Name FROM actions ) as t1 WHERE `Name` = ?', [ name ] ).then (results) ->
+        logger.silly "Got action: %j", results, {}
         cache[ 'actions' ][ name ] = results[0]?.Action || false
 
 getCacheUser = ( UUID ) ->
@@ -63,24 +65,54 @@ getCacheUser = ( UUID ) ->
         return Q( cacheUser )
     logger.silly 'Cache miss for users["%s"]', UUID
     query( 'SELECT `ID` FROM ?? WHERE `UUID` = ?', [ 'users', UUID ] ).then (results) ->
-        logger.silly "Got user: %j", results
+        logger.silly "Got user: %j", results, {}
         cache[ 'users' ][ UUID ] = results[0]?.ID || false
 
 reqParam = ( req, next, p ) ->
     unless req.params[ p ]?
+        logger.silly '%s: Missing paramter %s!', req.id, p
         next new restify.MissingParameterError "'#{p}' is required!"
         return false
     return true
 
-getRecommendations = ( req, res, next, queryString ) ->
-    return unless reqParam( req, next, 'user' )
-    return unless reqParam( req, next, 'names' )
+reqProjectID = ( req, next ) ->
+    if not req.projectID
+        logger.silly '%s: Missing projectID!', req.id
+        next new restify.MissingParameterError "projectID is required!"
+        return false
+    return true
 
-    Q(
-        getCacheUser req.params.user
-    ).then( ( userID ) ->
-        return next new restify.InvalidArgumentError "Unknown user '#{req.params.user}'" unless userID
-        query queryString, [ userID, userID, req.params.names ]
+reqParamPromise = ( req, res, key ) ->
+    return ( val ) ->
+        if val
+            return val
+        param = req.params[key]
+        logger.debug '%s: Invalid value "%s" for paramter %s!', req.id, param, key
+        res.send new restify.InvalidArgumentError "Unknown #{key} '#{param}'"
+        throw new Error("Invalid argument!")
+
+failurePromise = ( req, res, action ) ->
+    return ( errorMsg ) ->
+
+        errorMsg = errorMsg.toString()
+        logger.error "%s: Couldn\'t #{action}: %s", req.id, errorMsg
+        # Assume the error has already been handled
+        unless res._headerSent
+            res.send new restify.InternalServerError errorMsg
+
+        return undefined
+
+getUser = ( req, res ) -> getCacheUser( req.params.user ).then( reqParamPromise req, res, 'user' )
+
+
+getRecommendations = (req, res, next, queryString) ->
+    return unless ( reqParam( req, next, 'user' ) && reqParam( req, next, 'names' ) && reqProjectID( req, next ) )
+
+    logger.verbose '%s: Getting recommendations for %s %s', req.id, req.params.user, req.params.names
+
+    getUser( req, res )
+    .then( ( userID ) ->
+        query queryString, [ userID, req.projectID, userID, req.projectID, req.params.names ]
     )
     .then( (wat) ->
 
@@ -106,54 +138,97 @@ getRecommendations = ( req, res, next, queryString ) ->
                 else
                     return { Name: name, Done: 0, Referenced: 0, Probability: 0 }
 
-        logger.debug 'Sending recommendations:\n%j', results
+        logger.debug '%s: Sending recommendations:\n%j', req.id, results, {}
         res.send 200, results
         return results
 
     )
-    .fail( (whoops) ->
-        whoops = whoops.toString()
-        logger.error 'Couldn\'t get recommendations: %s', whoops
-        res.send 500, "Shit broke: " + whoops
-    )
+    .fail( failurePromise req, res, 'get recommendations' )
     .finally(next)
     .done()
 
 exports.addUser = ( req, res, next ) ->
     return unless reqParam( req, next, 'id' )
-    logger.verbose 'Adding user %s', req.params.id
+    logger.verbose '%s: Adding user %s', req.id, req.params.id
     query("INSERT INTO `users` SET ?", { UUID: req.params.id })
     .then( (wat) ->
-        logger.debug 'Added user'
+        logger.debug '%s: Added user', req.id
         res.send 204
     )
-    .fail( (whoops) ->
-        whoops = whoops.toString()
-        logger.error 'Could not add user: %s', whoops
-        res.send 500, "Shit broke: " + whoops
-    )
+    .fail( failurePromise req, res, 'add user' )
     .finally(next)
     .done()
 
 exports.addSkill = ( req, res, next ) ->
     return unless reqParam( req, next, 'name' )
-    logger.verbose 'Adding user %s', req.params.name
-    query("INSERT INTO `skills` SET ?", { Name: req.params.name })
+    logger.verbose '%s: Adding skill %s', req.id, req.params.name
+    getCacheItem( 'skills', req.params.name )
+    .then( (skillID) ->
+        if not skillID
+            query("INSERT INTO `skills` SET ?", {
+                Name: req.params.name
+            })
+        else
+            return insertId: skillID
+    )
     .then( (wat) ->
-        logger.debug 'Added skill'
+        cache.skills[req.params.name] = wat.insertId
+        query("INSERT INTO `projectskills` SET ?", {
+            Project: req.projectID || null
+            Skill: wat.insertId
+        })
+        insertQuery = "
+        INSERT INTO `activities` (Project, User, Action,Skill, Reference, Date)
+            SELECT
+                Project, users.ID as User, actionmap.Action as Action, " + wat.insertId + ", Reference, Date
+            FROM
+                allactivities
+            JOIN users ON allactivities.User = users.UUID
+            JOIN actionmap ON allactivities.`Action` = actionmap.Name
+            WHERE ? AND ?"
+        query(insertQuery, [{
+            Project: req.projectID || null }, {
+            Skill: req.params.name
+        }])
+        wat
+    )
+    .then( (wat) ->
+        query("DELETE FROM `allactivities` WHERE ? AND ?", [{
+            Project: req.projectID || null }, {
+            Skill: req.params.name
+        }])
+    )
+    .then( (wat) ->
+        logger.debug '%s: Added skill', req.id
         res.send 204
     )
-    .fail( (whoops) ->
-        whoops = whoops.toString()
-        logger.error 'Could not add skill: %s', whoops
-        res.send 500, "Shit broke: " + whoops
+    .fail( failurePromise req, res, 'add skill' )
+    .finally(next)
+    .done()
+
+exports.deleteSkill = ( req, res, next ) ->
+    return unless reqParam( req, next, 'name' )
+    logger.verbose '%s: Removing skill %s from project', req.id, req.params.name
+    getCacheItem( 'skills', req.params.name )
+    .then( (skillID) ->
+        query("DELETE FROM `projectskills` WHERE ? AND ?", [{
+            Project: req.projectID || null
+            }, {
+            Skill: skillID
+        }])
     )
+    .then( (wat) ->
+        logger.debug '%s: Removed skill', req.id
+        res.send 204
+    )
+    .fail( failurePromise req, res, 'remove skill' )
     .finally(next)
     .done()
 
 exports.getUserRank = ( req, res, next ) ->
-    return unless reqParam( req, next, 'user' )
-    logger.verbose 'User Rank Reqest for %s', req.params.user
+    return unless ( reqParam( req, next, 'user' ) and reqProjectID( req, next ) )
+    connect() unless connection?
+    logger.verbose '%s: User Rank Reqest for %s', req.id, req.params.user
     userRankQuery = "
         SELECT
             COUNT(*) as rank
@@ -162,45 +237,70 @@ exports.getUserRank = ( req, res, next ) ->
             (SELECT COUNT(*) as points, User FROM activities GROUP BY User) uo
         WHERE
             (ui.points, ui.User) >= (uo.points, uo.User) AND uo.User = ?"
+    userRankQuery += " AND ui.Project = uo.Project AND ui.Project = " + connection.escape(req.projectID)
 
-    Q( getCacheUser req.params.user )
+    getUser( req, res )
     .then( ( userID ) ->
-        return next new restify.InvalidArgumentError "Unknown user '#{req.params.user}'" unless userID
         query userRankQuery, [ userID ]
     )
     .then( (wat) ->
         if wat.length > 0
             wat = wat[0]
-        logger.debug 'Sending user ranks:\n%j', wat
+        logger.debug '%s: Sending user ranks:\n%j', req.id, wat, {}
         res.send 200, wat
     )
-    .fail( (whoops) ->
-        whoops = whoops.toString()
-        logger.error 'Get user rank failed', whoops
-        res.send 500, "Shit broke: " + whoops
-    )
+    .fail( failurePromise req, res, 'get user ran' )
     .finally(next)
     .done()
 
-# /api/activities/perform
-# json payload
-# {  }
-exports.performActivity = ( req, res, next ) ->
-    return unless reqParam( req, next, 'type' ) and reqParam( req, next, 'target' ) and reqParam( req, next, 'activator' )
+exports.getActivityLevels = ( req, res, next ) ->
+    return unless reqProjectID( req, next )
+    connect() unless connection?
+    logger.verbose '%s: Ranks reqest', req.id
+    ranksQuery = "
+        SELECT users.UUID as User, actions.Name as Action, skills.Name as Skill, Reference FROM activities
+        JOIN users ON activities.User = users.ID
+        JOIN actions ON activities.Action = actions.ID
+        JOIN projectskills ON activities.Skill = projectskills.Skill AND projectskills.Project = ?
+        JOIN skills ON activities.Skill = skills.ID
+        WHERE 1 = 1 "
+    if req.params.dateFrom
+        ranksQuery += " AND activities.Date >= " + connection.escape(req.params.dateFrom)
+    if req.params.dateTo
+        ranksQuery += " AND activities.Date <= " + connection.escape(req.params.dateTo)
+    ranksQuery += " GROUP BY skills.ID, activities.Action, Reference, activities.User"
 
-    logger.verbose 'Activity performed: %s in %s by %s', req.params.type, req.params.target, req.params.activator
+    query( ranksQuery, [ req.projectID ] )
+    .then( (wat) ->
+        results = []
+        if wat.length > 0
+            refs = {}
+            for row in wat
+                refs[row.Reference] = refs[row.Reference] || { Reference: row.Reference, Score:{}, Skills: {} }
+                refs[row.Reference].Skills[row.Skill] = row.Skill
 
+                refs[row.Reference].Score[row.Action] = refs[row.Reference].Score[row.Action] || []
+                refs[row.Reference].Score[row.Action].push row.User
+
+            (ref.Skills = (skill for __,skill of ref.Skills) for _,ref of refs)
+            results = (ref for _,ref of refs)
+        res.send 200, results
+    )
+    .fail( failurePromise req, res, 'get ranks' )
+    .finally(next)
+    .done()
+
+saveActivity = ( type, skills, reference, user_id, projectID, req, res, next ) ->
     abort = false
-
-    butts = for skill in req.params.target.tags
+    butts = for skill in skills
         Q.all([
-            getCacheAction req.params.target.type
+            getCacheAction type
             getCacheItem 'skills', skill
-            getCacheUser req.params.activator.id
+            getCacheUser user_id
         ]).spread( ( actionID, skillID, userID ) ->
-            logger.silly "Got IDs: %j", arguments
+            logger.silly "%s: Got IDs: %j", req.id, arguments, {}
             if not actionID
-                next new restify.InvalidArgumentError "Unknown action type '#{req.params.type}'"
+                next new restify.InvalidArgumentError "Unknown action type '#{type}'"
                 abort = true
                 return
             else if not skillID
@@ -208,65 +308,87 @@ exports.performActivity = ( req, res, next ) ->
                 abort = true
                 return
             else if not userID
-                next new restify.InvalidArgumentError "Unknown user '#{req.params.activator}'"
+                next new restify.InvalidArgumentError "Unknown user '#{user_id}'"
                 abort = true
                 return
             query "INSERT INTO `activities` SET ?", [{
+                Project: projectID
                 User: userID
                 Action: actionID
                 Skill: skillID
-                Reference: req.params.target.id
+                Reference: reference
             }]
         )
     Q.all(butts)
     .then( (wat) ->
         if abort
             query "INSERT INTO `allactivities` SET ?", [{
-                User: req.params.activator.id
-                Action: req.params.target.type
-                Skill: req.params.target.tags
-                Reference: req.params.target.id
+                Project: projectID
+                User: user_id
+                Action: type
+                Skill: skills
+                Reference: reference
                 Blob: JSON.stringify req.params
                 }]
             return
-        logger.debug 'Activity inserted'
+        logger.debug '%s: Activity inserted', req.id
         res.send 204
     )
-    .fail( (whoops) ->
-        whoops = whoops.toString()
-        logger.error 'Could not insert activity: %s', whoops
-        res.send 500, "Shit broke: " + whoops
-    )
+    .fail( failurePromise req, res, 'insert activity' )
     .finally(next)
     .done()
 
+# /api/activities/perform
+# json payload
+# {  }
+exports.performActivity = ( req, res, next ) ->
+    return unless reqParam( req, next, 'type' ) and reqParam( req, next, 'skills' ) and reqParam( req, next, 'reference' ) and reqParam( req, next, 'user' )
+
+    logger.verbose '%s: Activity performed: %s in %s by %j: %j', req.id, req.params.type, req.projectID, req.params.user, req.params.reference, {}
+
+    saveActivity req.params.type, req.params.skills, req.params.reference, req.params.user, req.projectID, req, res, next
+
 # FIXME: actions.actionType = 3 OR actions.ID = 14 seems very specific to logquest, needs some redesign
 exports.skillsDistribution = ( req, res, next ) ->
+    return unless reqProjectID( req, next )
+    connect() unless connection?
+
     distributionQuery = "
         SELECT
-            skills.Name as Skill, actions.Name as Action, COUNT(*) as Count
+            skills.Name as Skill,
+            actions.Name as Action,
+            COUNT(*) as Count,
+            users.UUID as User
         FROM
             activities
         JOIN actions ON
             ( actions.actionType = 3 OR actions.ID = 14 ) AND activities.Action = actions.ID
-        JOIN skills ON
+        RIGHT JOIN skills ON
             activities.Skill = skills.ID"
+    distributionQuery += " AND activities.Project = " + connection.escape(req.projectID) + " JOIN projectskills ON
+            skills.ID = projectskills.Skill AND projectskills.Project = " + connection.escape(req.projectID)
     if req.params.skills and req.params.skills instanceof Array
+        req.params.skills = req.params.skills.map (skill) -> connection.escape(skill)
         distributionQuery += " AND skills.Name IN ('" + req.params.skills.join("','") + "')"
-    if req.params.user
-        distributionQuery += " JOIN users ON activities.User = users.ID AND User = ?"
-    distributionQuery += " GROUP BY
-            activities.Skill, activities.Action, activities.User"
 
     if req.params.user
-        logger.verbose 'Skill distribution query for %s', req.params.user
-        promise = Q( getCacheUser req.params.user )
+        distributionQuery += " JOIN users ON activities.User = users.ID AND User = ?"
+    else
+        distributionQuery += " LEFT JOIN users ON activities.User = users.ID"
+
+    distributionQuery += ' GROUP BY
+            skills.ID, activities.Action, activities.User
+        ORDER BY
+            activities.Skill, activities.Date DESC'
+
+    if req.params.user
+        logger.verbose '%s: Skill distribution query for %s', req.id, req.params.user
+        promise = getUser( req, res )
             .then( ( userID ) ->
-                return next new restify.InvalidArgumentError "Unknown user '#{req.params.user}'" unless userID
                 query distributionQuery, [ userID ]
             )
     else
-        logger.verbose 'Skill distribution query for everyone'
+        logger.verbose '%s: Skill distribution query for everyone', req.id
         promise = query distributionQuery
 
     promise.then( (wat) ->
@@ -282,50 +404,63 @@ exports.skillsDistribution = ( req, res, next ) ->
                     name: name
                     count: 0
                     fraction: 0
-                    # Competitive
-                    rank: 0 # FIXME
-                    contribution: 0 # FIXME
-                    # Collaborative
-                    contributors: 0
+                    contributors: {}
                     types: {}
                     fractions: {}
+                }
+
+            getContributor = ( skill, guid ) ->
+                return skill.contributors[ guid ] ||= {
+                    guid
+                    count: 0
+                    actions: {}
+                }
+
+            getAction = ( skill, action ) ->
+                return skill.types[ action ] ||= {
+                    count: 0
+                    contributors: []
                 }
 
             for row in wat
                 name = row.Skill
                 action = row.Action
                 skill = getSkill name
-                skill.types[action] = (skill.types[action] || 0) + row.Count
-                sums[name] = (sums[name] || 0) + row.Count
-                total += row.Count
-                skill.contributors += 1
+                if action
+                    action_ = getAction skill, action
+                    action_.count += row.Count
+                    sums[name] = (sums[name] || 0) + row.Count
+                    total += row.Count
+                    if row.User
+                        user = getContributor(skill, row.User)
+                        user.count += row.Count
+                        user.actions[ action ] = row.Count
+                        action_.contributors.push row.User
 
             for name, data of skills
                 sum = sums[name]
-                data.count = sum
-                data.fraction = Math.floor( (sum / total) * 100 ) / 100
-                for action, count of data.types
-                    data.fractions[action] = Math.floor( (count / sum) * 100 ) / 100
+                data.count = sum if sum
+                data.fraction = ( Math.floor( (sum / total) * 100 ) / 100 ) || 0
+                for action, type of data.types
+                    data.fractions[action] = Math.floor( (type.count / sum) * 100 ) / 100
 
             results = (skill for name,skill of skills)
 
 
-        logger.debug 'Sending skill distribution:\n%j', results
+        logger.debug '%s: Sending skill distribution:\n%j', req.id, results, {}
         res.send 200, results
         return results
 
     )
-    .fail( (whoops) ->
-        whoops = whoops.toString()
-        logger.error 'Couldn\'t get skill distribution: %s', whoops
-        res.send 500, "Shit broke: " + whoops
-    )
+    .fail( failurePromise req, res, 'get skill distribution' )
     .finally(next)
     .done()
 
 exports.skillsContribution = ( req, res, next ) ->
-    return unless reqParam( req, next, 'user' )
-    logger.verbose 'Skills contribution request for %s', req.params.user
+    return unless ( reqParam( req, next, 'user' ) and reqProjectID( req, next ) )
+    logger.verbose '%s: Skills contribution request for %s', req.id, req.params.user
+    connect() unless connection?
+
     distributionQuery = "
         SELECT
             skills.Name as Skill, COUNT(*) as Count, activities.User
@@ -333,16 +468,17 @@ exports.skillsContribution = ( req, res, next ) ->
             activities
         JOIN actions ON
             ( actions.actionType = 3 OR actions.ID = 14 ) AND activities.Action = actions.ID
-        JOIN skills ON
-            activities.Skill = skills.ID
-        GROUP BY
-            activities.Skill, activities.User
+        RIGHT JOIN skills ON
+            activities.Skill = skills.ID"
+    distributionQuery += " AND activities.Project = " + connection.escape(req.projectID) + " JOIN projectskills ON
+            skills.ID = projectskills.Skill AND projectskills.Project = " + connection.escape(req.projectID)
+    distributionQuery += " GROUP BY
+            skills.ID, activities.User
         ORDER BY Skill, Count DESC"
 
     user_id = null
-    Q( getCacheUser req.params.user )
+    getUser( req, res )
     .then( ( userID ) ->
-        return next new restify.InvalidArgumentError "Unknown user '#{req.params.user}'" unless userID
         user_id = userID
         query distributionQuery, [ userID ]
     ).then( (wat) ->
@@ -352,9 +488,18 @@ exports.skillsContribution = ( req, res, next ) ->
 
         if wat.length > 0 && user_id
             for row in wat
-                if row.Skill != previousSkill
+                if ! row.User
+                    results[row.Skill] =
+                        rank: 0
+                        contribution: 0
+                    continue
+
+                if previousSkill && row.Skill != previousSkill
+                    if ! results[previousSkill]
+                        results[previousSkill] =
+                            rank: rank
+                            contribution: 0
                     rank = 1
-                previousSkill = row.Skill
 
                 if row.User == user_id
                     results[row.Skill] =
@@ -364,21 +509,26 @@ exports.skillsContribution = ( req, res, next ) ->
                 else
                     rank++
 
-        logger.debug 'Sending skill contributions:\n%j', results
+                previousSkill = row.Skill
+
+            if ! results[previousSkill]
+                results[previousSkill] =
+                    rank: rank
+                    contribution: 0
+
+        logger.debug '%s: Sending skill contributions:\n%j', req.id, results, {}
         res.send 200, results
         return results
 
     )
-    .fail( (whoops) ->
-        whoops = whoops.toString()
-        logger.error 'Couldn\'t get skill contributions: %s', whoops
-        res.send 500, "Shit broke: " + whoops
-    )
+    .fail( failurePromise req, res, 'get skill contributions' )
     .finally(next)
     .done()
 
 exports.userNumber = ( req, res, next ) ->
-    logger.verbose 'User Number Request'
+    return unless reqProjectID( req, next )
+    logger.verbose '%s: User Number Request', req.id
+    connect() unless connection?
     userNumberQuery = "
         SELECT
             skills.Name as Skill, COUNT(DISTINCT activities.User) as Count
@@ -386,53 +536,56 @@ exports.userNumber = ( req, res, next ) ->
             activities
         JOIN actions ON
             ( actions.actionType = 3 OR actions.ID = 14 ) AND activities.Action = actions.ID
-        JOIN skills ON
-            activities.Skill = skills.ID
-        GROUP BY
-            activities.Skill"
+         RIGHT JOIN skills ON
+            activities.Skill = skills.ID"
+    userNumberQuery += " AND activities.Project = " + connection.escape(req.projectID) + " JOIN projectskills ON
+            skills.ID = projectskills.Skill AND projectskills.Project = " + connection.escape(req.projectID)
+    userNumberQuery += " GROUP BY skills.ID"
 
-    Q( query userNumberQuery )
+    query( userNumberQuery )
     .then( (wat) ->
         result = {}
         if wat.length > 0
             for row in wat
                 result[row.Skill] = row.Count
 
-        logger.debug 'Sending skill user number:\n%j', result
+        logger.debug '%s: Sending skill user number:\n%j', req.id, result, {}
         res.send 200, result
         return result
 
     )
     .fail( (whoops) ->
         whoops = whoops.toString()
-        logger.error 'Couldn\'t get user number: %s', whoops
+        logger.error '%s: Couldn\'t get user number: %s', req.id, whoops
         res.send 500, "Shit broke: " + whoops
     )
     .finally(next)
     .done()
 
 exports.skillsCounts = ( req, res, next ) ->
-    console.log req.params
-    # Why is this here but no where else?
+    return unless reqProjectID( req, next )
     connect() unless connection?
     countsQuery = "
         SELECT
             skills.Name as Skill, COUNT(activities.Key) as Count
         FROM
             activities
-        JOIN actions ON ( actions.actionType = 3 OR actions.ID = 14 ) AND actions.ID = activities.Action
-        JOIN skills ON skills.ID = activities.Skill"
+        JOIN actions ON ( actions.actionType = 3 OR actions.ID = 14 ) AND actions.ID = activities.Action"
+    countsQuery += " AND Project = " + connection.escape(req.projectID)
     if req.params.user
         countsQuery += " JOIN users ON users.UUID = " + connection.escape(req.params.user) + " AND users.ID = activities.User"
+    countsQuery += " RIGHT JOIN skills ON skills.ID = activities.Skill"
+    countsQuery += " AND activities.Project = " + connection.escape(req.projectID) + " JOIN projectskills ON
+            skills.ID = projectskills.Skill AND projectskills.Project = " + connection.escape(req.projectID)
     countsQuery += " WHERE 1=1"
     if req.params.dateFrom
         countsQuery += " AND activities.Date >= " + connection.escape(req.params.dateFrom)
     if req.params.dateTo
         countsQuery += " AND activities.Date <= " + connection.escape(req.params.dateTo)
     countsQuery += " GROUP BY
-            activities.Skill ORDER BY Count DESC, activities.Skill ASC"
+            skills.ID ORDER BY Count DESC, activities.Skill ASC"
 
-    logger.verbose 'Skills Counts Requests: %s, %s, %s', req.params.user, req.params.dateFrom, req.params.dateTo
+    logger.verbose '%s: Skills Counts Requests: %s, %s, %s', req.id, req.params.user, req.params.dateFrom, req.params.dateTo
 
     query( countsQuery )
     .then( (wat) ->
@@ -440,20 +593,17 @@ exports.skillsCounts = ( req, res, next ) ->
         wat.forEach ( oneWat ) ->
             results[oneWat.Skill] = oneWat.Count
 
-        logger.debug 'Sending skills counts:\n%j\n', results
+        logger.debug '%s: Sending skills counts:\n%j\n', req.id, results, {}
         res.send 200, results
         return results
 
     )
-    .fail( (whoops) ->
-        whoops = whoops.toString()
-        logger.error 'Couldn\'t get skills count: %s', whoops
-        res.send 500, "Shit broke: " + whoops
-    )
+    .fail( failurePromise req, res, 'get skills counts' )
     .finally(next)
     .done()
 
 exports.getContributionStatistics = ( req, res, next ) ->
+    return unless reqProjectID( req, next )
     connect() unless connection?
     countsQuery = "
         SELECT
@@ -461,18 +611,20 @@ exports.getContributionStatistics = ( req, res, next ) ->
         FROM
             activities
         JOIN actions ON ( actions.actionType = 3 OR actions.ID = 14 ) AND actions.ID = activities.Action
-        JOIN skills ON skills.ID = activities.Skill
-        JOIN users ON users.ID = activities.User"
+        JOIN users ON users.ID = activities.User
+        RIGHT JOIN skills ON skills.ID = activities.Skill"
+    countsQuery += " AND activities.Project = " + connection.escape(req.projectID) + " JOIN projectskills ON
+            skills.ID = projectskills.Skill AND projectskills.Project = " + connection.escape(req.projectID)
     countsQuery += " WHERE 1=1"
     if req.params.dateFrom
         countsQuery += " AND activities.Date >= " + connection.escape(req.params.dateFrom)
     if req.params.dateTo
         countsQuery += " AND activities.Date <= " + connection.escape(req.params.dateTo)
     countsQuery += " GROUP BY
-            activities.Skill, activities.User
+            skills.ID, activities.User
             ORDER BY activities.Skill ASC, Count DESC"
 
-    logger.verbose 'User contributions statistics Requests: %s, %s, %s', req.params.dateFrom, req.params.dateTo
+    logger.verbose '%s: User contributions statistics Request: %s, %s', req.id, req.params.dateFrom, req.params.dateTo
 
     query( countsQuery )
     .then( (wat) ->
@@ -482,9 +634,12 @@ exports.getContributionStatistics = ( req, res, next ) ->
         rank = 1
         previousSkill = ''
         rankings = []
+        allSkills = {}
 
         if wat.length > 0
             wat.forEach ( row ) ->
+                allSkills[row.Skill] = row.Skill
+                if ! row.UUID then return
                 if row.Skill != previousSkill
                     contributors[row.Skill] = 0
                     rank = 1
@@ -502,9 +657,12 @@ exports.getContributionStatistics = ( req, res, next ) ->
             for UUID, user of users
                 rankings.push { user:UUID, contribution:user.contribution }
                 user.contributionFraction = Math.floor( ( user.contribution / totalContributions.total ) * 100 ) / 100
+                for skill, _ of allSkills
+                    if ! user.skills[skill]
+                        user.skills[skill] = { skill:skill, rank: 0, contribution:0, contributionFraction:0 }
                 for skillName, skill of user.skills
-                    skill.contributors = contributors[skillName]
-                    skill.contributionFraction = Math.floor( ( skill.contribution / totalContributions.skills[skillName] ) * 100 ) / 100
+                    skill.contributors = contributors[skillName] || 0
+                    skill.contributionFraction = ( Math.floor( ( skill.contribution / totalContributions.skills[skillName] ) * 100 ) / 100 ) || 0
 
             rankings.sort (a, b) ->
                 if a.contribution < b.contribution
@@ -515,24 +673,20 @@ exports.getContributionStatistics = ( req, res, next ) ->
 
 
             for rankObj, rank in rankings
-                users[rankObj.user].rank = rank+1
+                users[rankObj.user].rank = rank + 1
 
 
-        logger.debug 'Sending users contribution statistics:\n%j', users
+        logger.debug '%s: Sending users contribution statistics:\n%j', req.id, users, {}
         res.send 200, users
         return users
 
     )
-    .fail( (whoops) ->
-        whoops = whoops.toString()
-        logger.error 'Couldn\'t get contribution statistics: %s', whoops
-        res.send 500, "Shit broke: " + whoops
-    )
+    .fail( failurePromise req, res, 'get contribution statistics' )
     .finally(next)
     .done()
 
 exports.recommendSkills = ( req, res, next ) ->
-    logger.verbose 'Skill Recommendations Reqest for %s in %j', req.params.user, req.params.names
+    logger.verbose '%s: Skill Recommendations Reqest for %s in %j', req.id, req.params.user, req.params.names, {}
     statisticsQuery = "
         SELECT skills.Name, b1.Done, b2.Referenced FROM
             (
@@ -541,7 +695,7 @@ exports.recommendSkills = ( req, res, next ) ->
             FROM
                 activities
             WHERE
-                User = ?
+                User = ? AND Project = ?
             GROUP BY
                 Skill
             ) b1
@@ -550,7 +704,7 @@ exports.recommendSkills = ( req, res, next ) ->
             SELECT
                 a1.Skill, COUNT(*) as Referenced
             FROM
-                (SELECT * FROM activities WHERE User = ?) a1 LEFT OUTER JOIN activities a2
+                (SELECT * FROM activities WHERE User = ? AND Project = ?) a1 LEFT OUTER JOIN activities a2
             ON
                 ( a1.User != a2.User AND a1.Reference=a2.Reference )
             WHERE
@@ -563,7 +717,7 @@ exports.recommendSkills = ( req, res, next ) ->
     getRecommendations req, res, next, statisticsQuery
 
 exports.recommendActions = ( req, res, next ) ->
-    logger.verbose 'Action Recommendations Reqest for %s in %j', req.params.user, req.params.names
+    logger.verbose '%s: Action Recommendations Reqest for %s in %j', req.id, req.params.user, req.params.names, {}
     statisticsQuery = "
         SELECT actions.Name, b1.Done, b2.Referenced FROM
             (
@@ -572,7 +726,7 @@ exports.recommendActions = ( req, res, next ) ->
             FROM
                 activities
             WHERE
-                User = ?
+                User = ? AND Project = ?
             GROUP BY
                 Action
             ) b1
@@ -581,7 +735,7 @@ exports.recommendActions = ( req, res, next ) ->
             SELECT
                 a1.Action, COUNT(*) as Referenced
             FROM
-                (SELECT * FROM activities WHERE User = ?) a1 LEFT OUTER JOIN activities a2
+                (SELECT * FROM activities WHERE User = ? AND Project = ?) a1 LEFT OUTER JOIN activities a2
             ON
                 ( a1.User != a2.User AND a1.Reference=a2.Reference )
             WHERE
@@ -594,16 +748,16 @@ exports.recommendActions = ( req, res, next ) ->
     getRecommendations req, res, next, statisticsQuery
 
 exports.recommendActionTypes = ( req, res, next ) ->
-    logger.verbose 'ActionType Recommendations Reqest for %s in %j', req.params.user, req.params.names
+    logger.verbose '%s: ActionType Recommendations Reqest for %s in %j', req.id, req.params.user, req.params.names, {}
     statisticsQuery = "
-        SELECT actionTypes.Name, SUM(b1.Done) as Done, SUM(b2.Referenced) as Referenced FROM
+        SELECT actiontypes.Name, SUM(b1.Done) as Done, SUM(b2.Referenced) as Referenced FROM
             (
             SELECT
                 Action, COUNT(*) as Done
             FROM
                 activities
             WHERE
-                User = ?
+                User = ? AND Project = ?
             GROUP BY
                 Action
             ) b1
@@ -612,14 +766,14 @@ exports.recommendActionTypes = ( req, res, next ) ->
             SELECT
                 a1.Action, COUNT(*) as Referenced
             FROM
-                (SELECT * FROM activities WHERE User = ?) a1 LEFT OUTER JOIN activities a2
+                (SELECT * FROM activities WHERE User = ? AND Project = ?) a1 LEFT OUTER JOIN activities a2
             ON
                 ( a1.User != a2.User AND a1.Reference=a2.Reference )
             WHERE
                 a2.Key IS NOT NULL
             GROUP BY a1.Action
             ) b2
-        ON b1.Action = b2.Action JOIN (actions, actionTypes) ON (actions.ID = b1.Action AND actions.ActionType = actionTypes.ID) AND actionTypes.Name IN (?)
+        ON b1.Action = b2.Action JOIN (actions, actiontypes) ON (actions.ID = b1.Action AND actions.ActionType = actiontypes.ID) AND actiontypes.Name IN (?)
         GROUP BY actions.ActionType
         ORDER BY IFNULL(b1.Done, 0)+IFNULL(b2.Referenced, 0) DESC"
 
@@ -633,6 +787,6 @@ exports.recommendActionTypes = ( req, res, next ) ->
 
 # SELECT users.UUID, actions.Name, COUNT(activities.Key) as Count FROM activities, actions, users WHERE users.ID = activities.User AND actions.ID = activities.Action GROUP BY activities.User, activities.Action ORDER BY activities.User, Count DESC
 
-# SELECT users.UUID, actionTypes.Name, COUNT(activities.Key) as Count FROM activities, actions, users, actionTypes WHERE users.ID = activities.User AND actions.ActionType = actionTypes.ID AND actions.ID = activities.Action GROUP BY activities.User, actions.ActionType ORDER BY activities.User, Count DESC
+# SELECT users.UUID, actiontypes.Name, COUNT(activities.Key) as Count FROM activities, actions, users, actiontypes WHERE users.ID = activities.User AND actions.ActionType = actiontypes.ID AND actions.ID = activities.Action GROUP BY activities.User, actions.ActionType ORDER BY activities.User, Count DESC
 
 # SELECT a1.*, COUNT(*) as selfRefs, SUM(numOfRefs) FROM (SELECT a1.*, COUNT(a2.Reference) as numOfRefs FROM (SELECT * FROM activities WHERE User=1) a1 LEFT OUTER JOIN activities a2 ON ( a2.Reference IS NOT NULL AND a1.Key=a2.Reference ) GROUP BY a1.Key) as a1 GROUP BY a1.Action
